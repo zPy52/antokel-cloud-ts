@@ -1,7 +1,7 @@
 {
   "name": "@antokel/cloud",
   "version": "0.0.1",
-  "description": "Cloud SDK for Antokel engineers — TypeScript/Node.js edition",
+  "description": "Cloud SDK for Antokel engineers. TypeScript/Node.js edition",
   "author": "Antonio Peña Peña <toni@antokel.com>",
   "license": "Apache-2.0",
   "homepage": "https://github.com/zPy52/antokel-cloud",
