@@ -1,0 +1,64 @@
+{
+  "name": "@antokel/cloud",
+  "version": "0.0.1",
+  "description": "Cloud SDK for Antokel engineers — TypeScript/Node.js edition",
+  "author": "Antonio Peña Peña <toni@antokel.com>",
+  "license": "Apache-2.0",
+  "homepage": "https://github.com/zPy52/antokel-cloud",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/zPy52/antokel-cloud"
+  },
+  "keywords": [
+    "aws",
+    "s3",
+    "ec2",
+    "dynamodb",
+    "antokel",
+    "cloud",
+    "sdk"
+  ],
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch",
+    "test": "echo \"No tests yet\" && exit 0"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.3",
+    "tsdown": "^0.21.0-beta.2",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1001.0",
+    "@aws-sdk/client-ec2": "^3.1001.0",
+    "@aws-sdk/client-s3": "^3.1001.0",
+    "@aws-sdk/credential-providers": "^3.1001.0",
+    "@aws-sdk/lib-dynamodb": "^3.1001.0",
+    "zod": "^4.3.6"
+  },
+  "peerDependencies": {
+    "zod": ">=3.0.0"
+  },
+  "peerDependenciesMeta": {
+    "zod": {
+      "optional": false
+    }
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
