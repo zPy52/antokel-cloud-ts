@@ -1,13 +1,13 @@
-# @antokel/cloud — TypeScript SDK
+# antokel-cloud — TypeScript SDK
 
 Cloud SDK for Antokel engineers. TypeScript/Node.js port of the [`antokel-cloud`](https://pypi.org/project/antokel-cloud/) Python SDK.
 
 ## Installation
 
 ```bash
-npm install @antokel/cloud
+npm install antokel-cloud
 # or
-pnpm add @antokel/cloud
+pnpm add antokel-cloud
 ```
 
 ## Requirements
@@ -20,7 +20,7 @@ pnpm add @antokel/cloud
 ## S3
 
 ```ts
-import { AntokelAws } from "@antokel/cloud";
+import { AntokelAws } from "antokel-cloud";
 
 const aws = new AntokelAws(); // reads AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
 // or: new AntokelAws({ region: "us-east-1", accessKeyId: "...", secretAccessKey: "..." })
@@ -51,7 +51,7 @@ for await (const line of s3.asText.streamLines("data.csv")) {
 Schema-validated, fully type-safe ORM backed by `zod` (v3 and v4 compatible).
 
 ```ts
-import { AntokelAws, field } from "@antokel/cloud";
+import { AntokelAws, field } from "antokel-cloud";
 import { z } from "zod";
 
 const aws = new AntokelAws({ region: "us-east-1" });
