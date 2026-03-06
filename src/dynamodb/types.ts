@@ -5,19 +5,19 @@ export interface AwsConfig {
 }
 
 export type Operator =
-  | "="
-  | "<"
-  | "<="
-  | ">"
-  | ">="
-  | "BETWEEN"
-  | "IN"
-  | "contains"
-  | "begins_with"
-  | "attribute_exists"
-  | "attribute_not_exists"
-  | "attribute_type"
-  | "size";
+  | '='
+  | '<'
+  | '<='
+  | '>'
+  | '>='
+  | 'BETWEEN'
+  | 'IN'
+  | 'contains'
+  | 'begins_with'
+  | 'attribute_exists'
+  | 'attribute_not_exists'
+  | 'attribute_type'
+  | 'size';
 
 export interface FilterExpression {
   field: string;

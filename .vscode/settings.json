@@ -1,0 +1,63 @@
+{
+  "typescript.updateImportsOnFileMove.enabled": "always",
+  "typescript.preferences.importModuleSpecifier": "non-relative",
+
+  // Use Prettier as the default formatter
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  // Format files automatically on save
+  "editor.formatOnSave": true,
+  // Run ESLint (and any other available) fixes on save
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "explicit",
+    "source.fixAll.eslint": "explicit"
+  },
+  "emeraldwalk.runonsave": {
+    "commands": [
+      {
+        "match": "\\.(ts|tsx|js|jsx)$",
+        "cmd": "pnpm -s exec node --experimental-strip-types scripts/format-imports.ts \"${file}\""
+      }
+    ]
+  },
+
+  // Enable Prettier extension explicitly (optional but keeps settings tidy)
+  "prettier.enable": true,
+
+  // Common Prettier preferences – adjust to your liking
+  "prettier.singleQuote": true,
+  "prettier.trailingComma": "all",
+  "prettier.tabWidth": 2,
+  "prettier.printWidth": 100,
+
+  // Ensure ESLint runs for the relevant languages
+  "eslint.validate": ["javascript", "javascriptreact", "typescript", "typescriptreact", "astro"],
+  // Tell ESLint to use pnpm for resolving dependencies in this monorepo
+  "eslint.packageManager": "pnpm",
+  // Show the ESLint status icon in the status bar
+  "eslint.alwaysShowStatus": true,
+  "eslint.format.enable": true,
+
+  // Language-specific default formatter overrides (keeps Prettier for these langs)
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[astro]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
+  // Consistent line endings and tab size across the workspace
+  "files.eol": "\n",
+  "editor.tabSize": 2
+}

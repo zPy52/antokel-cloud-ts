@@ -44,6 +44,39 @@ for await (const line of s3.asText.streamLines("data.csv")) {
 }
 ```
 
+### Presigned URLs
+
+```ts
+import { AntokelAws } from "antokel-cloud";
+
+const aws = new AntokelAws();
+const s3 = aws.S3("bucket");
+
+const selectedImage = fileInput.files?.[0];
+if (!selectedImage) {
+  throw new Error("No image selected");
+}
+
+const upload = await s3.presigned.upload("path/to/file.webp", {
+  contentType: selectedImage.type,
+});
+
+const uploadResponse = await fetch(upload.url, {
+  method: upload.method,
+  headers: upload.headers,
+  body: selectedImage,
+});
+
+if (!uploadResponse.ok) {
+  throw new Error(`Upload failed with status ${uploadResponse.status}`);
+}
+
+const { bucket, pathToFile } = upload;
+const getUrl = await s3.presigned.download(pathToFile);
+```
+
+Use `PUT` for browser uploads. A raw `fetch(..., { method: "POST", body: file })` request is not a valid S3 presigned upload flow, and S3 will not return JSON for that upload request.
+
 ---
 
 ## DynamoDB ORM

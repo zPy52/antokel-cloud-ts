@@ -1,11 +1,11 @@
-import { S3Client } from "@aws-sdk/client-s3";
-import { EC2Client } from "@aws-sdk/client-ec2";
-import { AwsConfig } from "./dynamodb/types";
-import { DynamoDbService } from "./dynamodb/services/dynamodb-service";
-import { S3Wrapper } from "./s3";
-import { Ec2Wrapper } from "./ec2";
-import { AntokelDynamoDb, TableConfig } from "./dynamodb";
-import { z } from "zod";
+import { z } from 'zod';
+import { S3Wrapper } from './s3';
+import { Ec2Wrapper } from './ec2';
+import { AwsConfig } from './dynamodb/types';
+import { S3Client } from '@aws-sdk/client-s3';
+import { EC2Client } from '@aws-sdk/client-ec2';
+import { AntokelDynamoDb, TableConfig } from './dynamodb';
+import { DynamoDbService } from './dynamodb/services/dynamodb-service';
 
 export class AntokelAws {
   private awsConfig: AwsConfig;
@@ -14,7 +14,7 @@ export class AntokelAws {
 
   constructor(config?: AwsConfig) {
     this.awsConfig = config || {};
-    
+
     // Auto-init dynamodb using current config
     DynamoDbService.initializeClient({
       region: this.awsConfig.region,
@@ -25,7 +25,7 @@ export class AntokelAws {
 
   private getS3Client(): S3Client {
     if (!this._s3Client) {
-      const cfg: any = { region: this.awsConfig.region || process.env.AWS_REGION || "us-east-1" };
+      const cfg: any = { region: this.awsConfig.region || process.env.AWS_REGION || 'us-east-1' };
       if (this.awsConfig.accessKeyId && this.awsConfig.secretAccessKey) {
         cfg.credentials = {
           accessKeyId: this.awsConfig.accessKeyId,
@@ -39,7 +39,7 @@ export class AntokelAws {
 
   private getEc2Client(): EC2Client {
     if (!this._ec2Client) {
-      const cfg: any = { region: this.awsConfig.region || process.env.AWS_REGION || "us-east-1" };
+      const cfg: any = { region: this.awsConfig.region || process.env.AWS_REGION || 'us-east-1' };
       if (this.awsConfig.accessKeyId && this.awsConfig.secretAccessKey) {
         cfg.credentials = {
           accessKeyId: this.awsConfig.accessKeyId,
@@ -73,6 +73,6 @@ export class AntokelAws {
   }
 }
 
-export * from "./dynamodb";
-export { S3Wrapper, SubmoduleS3AsText } from "./s3";
-export { Ec2Wrapper, SubmoduleEc2Instance, Ec2InstanceConfig } from "./ec2";
+export * from './dynamodb';
+export { S3Wrapper, SubmoduleS3AsText, SubmoduleS3Presigned } from './s3';
+export { Ec2Wrapper, SubmoduleEc2Instance, Ec2InstanceConfig } from './ec2';

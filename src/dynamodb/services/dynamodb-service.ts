@@ -1,6 +1,14 @@
-import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { FilterExpression, QueryOptions } from "../types";
-import { DynamoDBDocumentClient, PutCommand, GetCommand, DeleteCommand, QueryCommand, ScanCommand, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { FilterExpression, QueryOptions } from '../types';
+import {
+  DynamoDBDocumentClient,
+  PutCommand,
+  GetCommand,
+  DeleteCommand,
+  QueryCommand,
+  ScanCommand,
+  UpdateCommand,
+} from '@aws-sdk/lib-dynamodb';
 
 export class SubmoduleDynamoDbServiceCrud {
   constructor(private docClient: DynamoDBDocumentClient) {}
@@ -10,7 +18,7 @@ export class SubmoduleDynamoDbServiceCrud {
       new PutCommand({
         TableName: tableName,
         Item: finalItem,
-      })
+      }),
     );
   }
 
@@ -19,7 +27,7 @@ export class SubmoduleDynamoDbServiceCrud {
       new GetCommand({
         TableName: tableName,
         Key: key,
-      })
+      }),
     );
     return response.Item ?? null;
   }
@@ -29,7 +37,7 @@ export class SubmoduleDynamoDbServiceCrud {
       new DeleteCommand({
         TableName: tableName,
         Key: key,
-      })
+      }),
     );
   }
 
@@ -39,7 +47,7 @@ export class SubmoduleDynamoDbServiceCrud {
     key: Record<string, any>,
     updateExpression: string,
     expressionAttributeNames?: Record<string, string>,
-    expressionAttributeValues?: Record<string, any>
+    expressionAttributeValues?: Record<string, any>,
   ): Promise<any> {
     const response = await this.docClient.send(
       new UpdateCommand({
@@ -48,8 +56,8 @@ export class SubmoduleDynamoDbServiceCrud {
         UpdateExpression: updateExpression,
         ExpressionAttributeNames: expressionAttributeNames,
         ExpressionAttributeValues: expressionAttributeValues,
-        ReturnValues: "ALL_NEW",
-      })
+        ReturnValues: 'ALL_NEW',
+      }),
     );
     return response.Attributes;
   }
@@ -63,13 +71,14 @@ export class SubmoduleDynamoDbServiceQuery {
     partitionKeyName: string,
     partitionKeyValue: any,
     filters: FilterExpression[],
-    options?: QueryOptions
+    options?: QueryOptions,
   ): Promise<{ items: any[]; lastEvaluatedKey?: Record<string, any> }> {
-    const { FilterExpression, ExpressionAttributeNames, ExpressionAttributeValues } = this.buildConditionExpressions(filters);
+    const { FilterExpression, ExpressionAttributeNames, ExpressionAttributeValues } =
+      this.buildConditionExpressions(filters);
 
     const keyConditionExpression = `#pk = :pk`;
-    const mergedNames = { ...ExpressionAttributeNames, "#pk": partitionKeyName };
-    const mergedValues = { ...ExpressionAttributeValues, ":pk": partitionKeyValue };
+    const mergedNames = { ...ExpressionAttributeNames, '#pk': partitionKeyName };
+    const mergedValues = { ...ExpressionAttributeValues, ':pk': partitionKeyValue };
 
     const response = await this.docClient.send(
       new QueryCommand({
@@ -82,7 +91,7 @@ export class SubmoduleDynamoDbServiceQuery {
         Limit: options?.limit,
         ScanIndexForward: options?.scanIndexForward,
         ExclusiveStartKey: options?.exclusiveStartKey,
-      })
+      }),
     );
 
     return {
@@ -94,20 +103,25 @@ export class SubmoduleDynamoDbServiceQuery {
   public async executeScan(
     tableName: string,
     filters: FilterExpression[],
-    options?: QueryOptions
+    options?: QueryOptions,
   ): Promise<{ items: any[]; lastEvaluatedKey?: Record<string, any> }> {
-    const { FilterExpression, ExpressionAttributeNames, ExpressionAttributeValues } = this.buildConditionExpressions(filters);
+    const { FilterExpression, ExpressionAttributeNames, ExpressionAttributeValues } =
+      this.buildConditionExpressions(filters);
 
     const response = await this.docClient.send(
       new ScanCommand({
         TableName: tableName,
         IndexName: options?.indexName,
         FilterExpression: FilterExpression || undefined,
-        ExpressionAttributeNames: Object.keys(ExpressionAttributeNames).length ? ExpressionAttributeNames : undefined,
-        ExpressionAttributeValues: Object.keys(ExpressionAttributeValues).length ? ExpressionAttributeValues : undefined,
+        ExpressionAttributeNames: Object.keys(ExpressionAttributeNames).length
+          ? ExpressionAttributeNames
+          : undefined,
+        ExpressionAttributeValues: Object.keys(ExpressionAttributeValues).length
+          ? ExpressionAttributeValues
+          : undefined,
         Limit: options?.limit,
         ExclusiveStartKey: options?.exclusiveStartKey,
-      })
+      }),
     );
 
     return {
@@ -120,7 +134,8 @@ export class SubmoduleDynamoDbServiceQuery {
    * Translates our FilterExpression AST to DynamoDB expression syntax
    */
   private buildConditionExpressions(filters: FilterExpression[]) {
-    if (!filters.length) return { FilterExpression: "", ExpressionAttributeNames: {}, ExpressionAttributeValues: {} };
+    if (!filters.length)
+      return { FilterExpression: '', ExpressionAttributeNames: {}, ExpressionAttributeValues: {} };
 
     const expressionParts: string[] = [];
     const ExpressionAttributeNames: Record<string, string> = {};
@@ -134,47 +149,47 @@ export class SubmoduleDynamoDbServiceQuery {
       const val2Key = `:v2${i}`;
 
       switch (filter.operator) {
-        case "=":
-        case "<":
-        case "<=":
-        case ">":
-        case ">=":
+        case '=':
+        case '<':
+        case '<=':
+        case '>':
+        case '>=':
           expressionParts.push(`${nameKey} ${filter.operator} ${valKey}`);
           ExpressionAttributeValues[valKey] = filter.value;
           break;
-        case "BETWEEN":
+        case 'BETWEEN':
           expressionParts.push(`${nameKey} BETWEEN ${valKey} AND ${val2Key}`);
           ExpressionAttributeValues[valKey] = filter.value;
           ExpressionAttributeValues[val2Key] = filter.value2;
           break;
-        case "IN":
+        case 'IN':
           if (Array.isArray(filter.value) && filter.value.length > 0) {
             const inKeys = filter.value.map((_, idx) => `:in${i}_${idx}`);
-            expressionParts.push(`${nameKey} IN (${inKeys.join(", ")})`);
+            expressionParts.push(`${nameKey} IN (${inKeys.join(', ')})`);
             filter.value.forEach((v, idx) => {
               ExpressionAttributeValues[`:in${i}_${idx}`] = v;
             });
           }
           break;
-        case "contains":
+        case 'contains':
           expressionParts.push(`contains(${nameKey}, ${valKey})`);
           ExpressionAttributeValues[valKey] = filter.value;
           break;
-        case "begins_with":
+        case 'begins_with':
           expressionParts.push(`begins_with(${nameKey}, ${valKey})`);
           ExpressionAttributeValues[valKey] = filter.value;
           break;
-        case "attribute_exists":
+        case 'attribute_exists':
           expressionParts.push(`attribute_exists(${nameKey})`);
           break;
-        case "attribute_not_exists":
+        case 'attribute_not_exists':
           expressionParts.push(`attribute_not_exists(${nameKey})`);
           break;
-        case "attribute_type":
+        case 'attribute_type':
           expressionParts.push(`attribute_type(${nameKey}, ${valKey})`);
           ExpressionAttributeValues[valKey] = filter.value;
           break;
-        case "size":
+        case 'size':
           expressionParts.push(`size(${nameKey}) = ${valKey}`);
           ExpressionAttributeValues[valKey] = filter.value;
           break;
@@ -182,7 +197,7 @@ export class SubmoduleDynamoDbServiceQuery {
     });
 
     return {
-      FilterExpression: expressionParts.join(" AND "),
+      FilterExpression: expressionParts.join(' AND '),
       ExpressionAttributeNames,
       ExpressionAttributeValues,
     };
@@ -193,10 +208,14 @@ export class DynamoDbService {
   private static clientObj: DynamoDBClient | null = null;
   private static docClientObj: DynamoDBDocumentClient | null = null;
 
-  public static initializeClient(config: { region?: string; accessKeyId?: string; secretAccessKey?: string }) {
+  public static initializeClient(config: {
+    region?: string;
+    accessKeyId?: string;
+    secretAccessKey?: string;
+  }) {
     if (!this.clientObj) {
-      const awsConfig: any = { region: config.region || process.env.AWS_REGION || "us-east-1" };
-      
+      const awsConfig: any = { region: config.region || process.env.AWS_REGION || 'us-east-1' };
+
       if (config.accessKeyId && config.secretAccessKey) {
         awsConfig.credentials = {
           accessKeyId: config.accessKeyId,
@@ -208,7 +227,7 @@ export class DynamoDbService {
       this.docClientObj = DynamoDBDocumentClient.from(this.clientObj, {
         marshallOptions: { removeUndefinedValues: true },
       });
-      
+
       this._crud = new SubmoduleDynamoDbServiceCrud(this.docClientObj);
       this._query = new SubmoduleDynamoDbServiceQuery(this.docClientObj);
     }
@@ -216,13 +235,13 @@ export class DynamoDbService {
 
   private static _crud: SubmoduleDynamoDbServiceCrud;
   public static get crud(): SubmoduleDynamoDbServiceCrud {
-    if (!this._crud) throw new Error("DynamoDbService not initialized. Call AntokelAws first.");
+    if (!this._crud) throw new Error('DynamoDbService not initialized. Call AntokelAws first.');
     return this._crud;
   }
 
   private static _query: SubmoduleDynamoDbServiceQuery;
   public static get query(): SubmoduleDynamoDbServiceQuery {
-    if (!this._query) throw new Error("DynamoDbService not initialized. Call AntokelAws first.");
+    if (!this._query) throw new Error('DynamoDbService not initialized. Call AntokelAws first.');
     return this._query;
   }
 }

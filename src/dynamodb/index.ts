@@ -1,6 +1,6 @@
-import { z } from "zod";
-import { FilterExpression, QueryOptions } from "./types";
-import { DynamoDbService } from "./services/dynamodb-service";
+import { z } from 'zod';
+import { FilterExpression, QueryOptions } from './types';
+import { DynamoDbService } from './services/dynamodb-service';
 
 export interface TableConfig<T extends z.ZodTypeAny> {
   tableName: string;
@@ -20,7 +20,7 @@ export class AntokelDynamoDb<T extends z.ZodTypeAny> {
     if (this.config.sortKey && sortKeyValue !== undefined) {
       key[this.config.sortKey as string] = sortKeyValue;
     }
-    
+
     const item = await DynamoDbService.crud.getItem(this.config.tableName, key);
     if (!item) return null;
 
@@ -52,18 +52,18 @@ export class AntokelDynamoDb<T extends z.ZodTypeAny> {
   public async query(
     partitionKeyValue: any,
     filters: FilterExpression[] = [],
-    options?: QueryOptions
+    options?: QueryOptions,
   ): Promise<{ items: z.infer<T>[]; lastEvaluatedKey?: Record<string, any> }> {
     const result = await DynamoDbService.query.executeQuery(
       this.config.tableName,
       this.config.partitionKey as string,
       partitionKeyValue,
       filters,
-      options
+      options,
     );
 
     return {
-      items: result.items.map(i => this.config.schema.parse(i)), // Schema check on db results
+      items: result.items.map((i) => this.config.schema.parse(i)), // Schema check on db results
       lastEvaluatedKey: result.lastEvaluatedKey,
     };
   }
@@ -73,16 +73,16 @@ export class AntokelDynamoDb<T extends z.ZodTypeAny> {
    */
   public async scan(
     filters: FilterExpression[] = [],
-    options?: QueryOptions
+    options?: QueryOptions,
   ): Promise<{ items: z.infer<T>[]; lastEvaluatedKey?: Record<string, any> }> {
     const result = await DynamoDbService.query.executeScan(this.config.tableName, filters, options);
     return {
-      items: result.items.map(i => this.config.schema.parse(i)),
+      items: result.items.map((i) => this.config.schema.parse(i)),
       lastEvaluatedKey: result.lastEvaluatedKey,
     };
   }
 }
 
 // Exporting the field builder for easy access
-export { field } from "./models/field";
-export { FilterExpression, QueryOptions } from "./types";
+export { field } from './models/field';
+export { FilterExpression, QueryOptions } from './types';
