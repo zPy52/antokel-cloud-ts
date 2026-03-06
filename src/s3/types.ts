@@ -1,3 +1,9 @@
+import { Buffer } from 'buffer';
+
+import { Source } from '../types';
+
+export type { Source };
+
 export interface S3PresignedUploadOptions {
   expiresInSeconds?: number;
   contentType?: string;

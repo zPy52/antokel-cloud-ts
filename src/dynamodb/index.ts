@@ -85,4 +85,4 @@ export class AntokelDynamoDb<T extends z.ZodTypeAny> {
 
 // Exporting the field builder for easy access
 export { field } from './models/field';
-export { FilterExpression, QueryOptions } from './types';
+export type { FilterExpression, QueryOptions } from './types';

@@ -20,6 +20,7 @@ pnpm add antokel-cloud
 ## S3
 
 ```ts
+import * as fs from "fs";
 import { AntokelAws } from "antokel-cloud";
 
 const aws = new AntokelAws(); // reads AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
@@ -29,8 +30,10 @@ const s3 = aws.S3("my-bucket");
 // with prefix: aws.S3("my-bucket", { prefix: "folder/subfolder/" })
 
 // Upload / download / move / delete
-await s3.upload("./local/file.pdf", "path/on/s3.pdf");
+await s3.upload(fs.readFileSync("./local/file.pdf"), "path/on/s3.pdf");
 await s3.download("path/on/s3.pdf", "./local/file.pdf");
+await s3.download("path/on/s3.pdf", s3.as.base64); // "data:application/pdf;base64,..."
+await s3.download("path/on/s3.pdf", s3.as.bytes);  // Buffer
 await s3.move("old/path.pdf", "new/path.pdf");
 await s3.remove("path/on/s3.pdf");
 
@@ -148,6 +151,37 @@ const { items: allAdmins } = await users.scan([
 | `field("x").exists()` | `attribute_exists(x)` |
 | `field("x").notExists()` | `attribute_not_exists(x)` |
 | `field("x").hasType("S")` | `attribute_type(x, S)` |
+
+---
+
+## Rekognition
+
+The SDK provides a robust, strongly-typed wrapper around AWS Rekognition for image and video analysis. Valid inputs (`Source` type) include a URL string, a native `URL` object, an `ArrayBuffer`, a `Uint8Array`, or a Node `Buffer`.
+
+```ts
+import { AntokelAws } from "antokel-cloud";
+import * as fs from "fs";
+
+const aws = new AntokelAws(); // Automatically picks up region/credentials
+const rekog = aws.Rekognition();
+
+// From an image buffer
+const buf = fs.readFileSync("path/to/image.jpg");
+const labelsRes = await rekog.labels(buf);
+
+console.log(labelsRes.toJson());
+// => [{ name: "Person", confidence: 99.8, instances: [...] }, ...]
+
+// From a URL directly
+const faceRes = await rekog.facial("https://example.com/face.png");
+console.log(faceRes.toJson()[0].attributes.smile); // typed as boolean
+
+// Other operations
+await rekog.properties("...");     // Image brightness, sharpness, contrast, dominant colors
+await rekog.text("...");           // OCR text detection
+await rekog.ppe("...");            // Personal Protective Equipment detection
+await rekog.compareFaces(img1, img2); // Similarity score
+```
 
 ---
 

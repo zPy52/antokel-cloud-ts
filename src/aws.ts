@@ -2,8 +2,10 @@ import { z } from 'zod';
 import { S3Wrapper } from './s3';
 import { Ec2Wrapper } from './ec2';
 import { AwsConfig } from './dynamodb/types';
+import { SubmoduleRekognition } from './rekognition';
 import { S3Client } from '@aws-sdk/client-s3';
 import { EC2Client } from '@aws-sdk/client-ec2';
+import { RekognitionClient } from '@aws-sdk/client-rekognition';
 import { AntokelDynamoDb, TableConfig } from './dynamodb';
 import { DynamoDbService } from './dynamodb/services/dynamodb-service';
 
@@ -11,6 +13,7 @@ export class AntokelAws {
   private awsConfig: AwsConfig;
   private _s3Client?: S3Client;
   private _ec2Client?: EC2Client;
+  private _rekognitionClient?: RekognitionClient;
 
   constructor(config?: AwsConfig) {
     this.awsConfig = config || {};
@@ -51,6 +54,20 @@ export class AntokelAws {
     return this._ec2Client;
   }
 
+  private getRekognitionClient(): RekognitionClient {
+    if (!this._rekognitionClient) {
+      const cfg: any = { region: this.awsConfig.region || process.env.AWS_REGION || 'us-east-1' };
+      if (this.awsConfig.accessKeyId && this.awsConfig.secretAccessKey) {
+        cfg.credentials = {
+          accessKeyId: this.awsConfig.accessKeyId,
+          secretAccessKey: this.awsConfig.secretAccessKey,
+        };
+      }
+      this._rekognitionClient = new RekognitionClient(cfg);
+    }
+    return this._rekognitionClient;
+  }
+
   /**
    * Generates an S3 wrapper.
    */
@@ -66,6 +83,13 @@ export class AntokelAws {
   }
 
   /**
+   * Generates a Rekognition service facade.
+   */
+  public Rekognition(): SubmoduleRekognition {
+    return new SubmoduleRekognition(this.getRekognitionClient());
+  }
+
+  /**
    * Generates a type-safe DynamoDB ORM table mapper.
    */
   public Dynamo<T extends z.ZodTypeAny>(config: TableConfig<T>): AntokelDynamoDb<T> {
@@ -76,3 +100,4 @@ export class AntokelAws {
 export * from './dynamodb';
 export { S3Wrapper, SubmoduleS3AsText, SubmoduleS3Presigned } from './s3';
 export { Ec2Wrapper, SubmoduleEc2Instance, Ec2InstanceConfig } from './ec2';
+export * from './rekognition';
