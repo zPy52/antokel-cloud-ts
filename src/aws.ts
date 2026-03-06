@@ -99,5 +99,6 @@ export class AntokelAws {
 
 export * from './dynamodb';
 export { S3Wrapper, SubmoduleS3AsText, SubmoduleS3Presigned } from './s3';
-export { Ec2Wrapper, SubmoduleEc2Instance, Ec2InstanceConfig } from './ec2';
+export { Ec2Wrapper, SubmoduleEc2Instance } from './ec2';
+export type { Ec2InstanceConfig } from './ec2';
 export * from './rekognition';

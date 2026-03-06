@@ -6,14 +6,14 @@ export default defineConfig({
   dts: true,
   clean: true,
   deps: {
-    neverBundle: [
-    '@aws-sdk/client-s3',
-    '@aws-sdk/client-ec2',
-    '@aws-sdk/client-dynamodb',
-    '@aws-sdk/lib-dynamodb',
-    '@aws-sdk/credential-providers',
-    'zod'
-  ],
+    alwaysBundle: [
+      /^@aws-sdk\//,
+      /^@smithy\//,
+      'fast-xml-parser',
+      'tslib',
+    ],
+    onlyAllowBundle: false,
+    neverBundle: ['zod'],
   },
   target: false,
 });

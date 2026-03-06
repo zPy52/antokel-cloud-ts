@@ -1,6 +1,6 @@
 {
   "name": "antokel-cloud",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Cloud SDK for Antokel engineers. TypeScript/Node.js edition",
   "author": "Antonio Peña Peña <toni@antokel.com>",
   "license": "Apache-2.0",
@@ -18,17 +18,17 @@
     "cloud",
     "sdk"
   ],
-  "main": "dist/index.js",
+  "main": "dist/index.cjs",
   "module": "dist/index.mjs",
-  "types": "dist/index.d.ts",
+  "types": "dist/index.d.mts",
   "publishConfig": {
     "access": "public"
   },
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./dist/index.d.mts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "require": "./dist/index.cjs"
     }
   },
   "files": [
