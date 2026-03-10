@@ -6,6 +6,7 @@ import type { AwsCredentialIdentity, HttpRequest as SignedHttpRequest } from '@s
 import {
   encodeS3Path,
   formatPresignedRequest,
+  resolveS3Key,
   resolveBooleanConfig,
   resolveEndpointUrl,
 } from './shared';
@@ -26,7 +27,7 @@ export class SubmoduleS3Presigned {
     cloudPath: string,
     options: S3PresignedUploadOptions = {},
   ): Promise<S3PresignedUploadResult> {
-    const fullPath = this.defaultPrefix + cloudPath;
+    const fullPath = resolveS3Key(this.defaultPrefix, cloudPath);
     const signedRequest = await this.signRequest({
       method: 'PUT',
       fullPath,
@@ -47,7 +48,7 @@ export class SubmoduleS3Presigned {
     cloudPath: string,
     options: S3PresignedDownloadOptions = {},
   ): Promise<string> {
-    const fullPath = this.defaultPrefix + cloudPath;
+    const fullPath = resolveS3Key(this.defaultPrefix, cloudPath);
     const signedRequest = await this.signRequest({
       method: 'GET',
       fullPath,

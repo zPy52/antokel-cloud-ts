@@ -35,6 +35,17 @@ export function encodeS3Path(path: string): string {
     .join('/');
 }
 
+export function resolveS3Key(prefix: string | undefined, key: string): string {
+  const normalizedPrefix = (prefix ?? '').replace(/^\/+|\/+$/g, '');
+  const normalizedKey = key.replace(/^\/+/g, '');
+
+  if (!normalizedPrefix) {
+    return normalizedKey;
+  }
+
+  return `${normalizedPrefix}/${normalizedKey}`;
+}
+
 export function formatPresignedRequest(request: PresignedRequestLike): string {
   const url = new URL(
     `${request.protocol}//${request.hostname}${request.port ? `:${request.port}` : ''}${request.path}`,

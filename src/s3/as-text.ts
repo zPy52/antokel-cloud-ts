@@ -1,6 +1,7 @@
 import { Readable } from 'stream';
 import { createInterface } from 'readline';
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { resolveS3Key } from './shared';
 
 export class SubmoduleS3AsText {
   constructor(
@@ -10,7 +11,7 @@ export class SubmoduleS3AsText {
   ) {}
 
   public async read(cloudPath: string): Promise<string> {
-    const fullPath = this.defaultPrefix + cloudPath;
+    const fullPath = resolveS3Key(this.defaultPrefix, cloudPath);
     const response = await this.s3Client.send(
       new GetObjectCommand({
         Bucket: this.bucketName,
@@ -26,7 +27,7 @@ export class SubmoduleS3AsText {
   }
 
   public async write(content: string, cloudPath: string): Promise<void> {
-    const fullPath = this.defaultPrefix + cloudPath;
+    const fullPath = resolveS3Key(this.defaultPrefix, cloudPath);
     await this.s3Client.send(
       new PutObjectCommand({
         Bucket: this.bucketName,
@@ -37,7 +38,7 @@ export class SubmoduleS3AsText {
   }
 
   public async *streamLines(cloudPath: string): AsyncGenerator<string, void, unknown> {
-    const fullPath = this.defaultPrefix + cloudPath;
+    const fullPath = resolveS3Key(this.defaultPrefix, cloudPath);
     const response = await this.s3Client.send(
       new GetObjectCommand({
         Bucket: this.bucketName,

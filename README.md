@@ -27,7 +27,8 @@ const aws = new AntokelAws(); // reads AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET
 // or: new AntokelAws({ region: "us-east-1", accessKeyId: "...", secretAccessKey: "..." })
 
 const s3 = aws.S3("my-bucket");
-// with prefix: aws.S3("my-bucket", { prefix: "folder/subfolder/" })
+// with prefix: aws.S3("my-bucket", { prefix: "folder/subfolder" })
+// trailing slash is also accepted and normalized
 
 // Upload / download / move / delete
 await s3.upload(fs.readFileSync("./local/file.pdf"), "path/on/s3.pdf");

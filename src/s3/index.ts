@@ -4,7 +4,14 @@ import { Source } from './types';
 import { randomUUID } from 'crypto';
 import { SubmoduleS3AsText } from './as-text';
 import { SubmoduleS3Presigned } from './presigned';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import {
+  CopyObjectCommand,
+  DeleteObjectCommand,
+  GetObjectCommand,
+  PutObjectCommand,
+  S3Client,
+} from '@aws-sdk/client-s3';
+import { resolveS3Key } from './shared';
 
 export const AsBase64 = Symbol('base64');
 export const AsBytes = Symbol('bytes');
@@ -75,6 +82,7 @@ export class S3Wrapper {
   public async upload(source: Source, key?: string): Promise<string> {
     const finalKey = key || randomUUID();
     const body = await sourceToBuffer(source);
+    const resolvedKey = resolveS3Key(this.defaultPrefix, finalKey);
 
     let contentType = 'application/octet-stream';
     if (typeof source === 'string' && source.startsWith('data:')) {
@@ -87,7 +95,7 @@ export class S3Wrapper {
     await this.s3Client.send(
       new PutObjectCommand({
         Bucket: this.bucketName,
-        Key: this.defaultPrefix ? `${this.defaultPrefix}/${finalKey}` : finalKey,
+        Key: resolvedKey,
         Body: body,
         ContentType: contentType,
       }),
@@ -116,7 +124,7 @@ export class S3Wrapper {
   ): Promise<string | Buffer | void> {
     const command = new GetObjectCommand({
       Bucket: this.bucketName,
-      Key: this.defaultPrefix ? `${this.defaultPrefix}/${key}` : key,
+      Key: resolveS3Key(this.defaultPrefix, key),
     });
 
     const response = await this.s3Client.send(command);
@@ -139,6 +147,35 @@ export class S3Wrapper {
 
     // Save to local path
     await fs.promises.writeFile(destination as string, buffer);
+  }
+
+  public async remove(cloudPath: string): Promise<void> {
+    await this.s3Client.send(
+      new DeleteObjectCommand({
+        Bucket: this.bucketName,
+        Key: resolveS3Key(this.defaultPrefix, cloudPath),
+      }),
+    );
+  }
+
+  public async move(from: string, to: string): Promise<void> {
+    const sourceKey = resolveS3Key(this.defaultPrefix, from);
+    const targetKey = resolveS3Key(this.defaultPrefix, to);
+
+    await this.s3Client.send(
+      new CopyObjectCommand({
+        Bucket: this.bucketName,
+        Key: targetKey,
+        CopySource: `${this.bucketName}/${sourceKey}`,
+      }),
+    );
+
+    await this.s3Client.send(
+      new DeleteObjectCommand({
+        Bucket: this.bucketName,
+        Key: sourceKey,
+      }),
+    );
   }
 }
 
