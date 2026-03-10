@@ -1,13 +1,13 @@
 {
   "name": "antokel-cloud",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Cloud SDK for Antokel engineers. TypeScript/Node.js edition",
   "author": "Antonio Peña Peña <toni@antokel.com>",
   "license": "Apache-2.0",
-  "homepage": "https://github.com/zPy52/antokel-cloud",
+  "homepage": "https://github.com/zPy52/antokel-cloud-ts",
   "repository": {
     "type": "git",
-    "url": "https://github.com/zPy52/antokel-cloud"
+    "url": "https://github.com/zPy52/antokel-cloud-ts"
   },
   "keywords": [
     "aws",
