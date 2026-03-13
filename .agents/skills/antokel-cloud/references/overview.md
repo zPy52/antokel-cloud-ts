@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`antokel-cloud` is a TypeScript/Node.js SDK for Antokel engineers. The README presents it as a port of the Python `antokel-cloud` package and documents four main areas: S3, DynamoDB, Rekognition, and EC2.
+`antokel-cloud` is a TypeScript/Node.js SDK for Antokel engineers. The README presents it as a port of the Python `antokel-cloud` package and documents five main areas: S3, DynamoDB, Rekognition, Transcribe, and EC2.
 
 ## Requirements
 
@@ -30,6 +30,7 @@ Use the resulting instance to create service wrappers:
 - `aws.S3(bucketName, options?)`
 - `aws.Dynamo(config)`
 - `aws.Rekognition()`
+- `aws.Transcribe(config?)`
 - `aws.EC2()`
 
 ## Agent Rules
@@ -44,4 +45,5 @@ Use the resulting instance to create service wrappers:
 - If the user needs file upload, download, base64, bytes, text helpers, or presigned URLs, read [s3.md](./s3.md).
 - If the user needs typed DynamoDB tables, zod schemas, CRUD, query filters, or scans, read [dynamodb.md](./dynamodb.md).
 - If the user needs image analysis or face comparison, read [rekognition.md](./rekognition.md).
+- If the user needs audio transcription, payload staging, or token/word timestamps, read [transcribe.md](./transcribe.md).
 - If the user needs instance lookup or instance lifecycle actions, read [ec2.md](./ec2.md).

@@ -186,6 +186,55 @@ await rekog.compareFaces(img1, img2); // Similarity score
 
 ---
 
+## Transcribe
+
+The SDK provides a high-level Amazon Transcribe wrapper for batch jobs. `transcribe.as.uri(...)` works with existing `s3://...` or `https://...` media URIs, while `transcribe.as.bytes(...)` and `transcribe.as.base64(...)` auto-stage audio to S3 before starting the job.
+
+```ts
+import * as fs from "fs";
+import { AntokelAws } from "antokel-cloud";
+
+const aws = new AntokelAws();
+
+const transcribe = aws.Transcribe({
+  stagingBucket: "my-transcribe-staging",
+  stagingPrefix: "incoming-audio",
+  outputBucket: "my-transcribe-output",
+  outputPrefix: "jobs",
+});
+
+const byUri = await transcribe.as.uri("s3://media-bucket/audio.mp3", {
+  mediaFormat: "mp3",
+  languageCode: "en-US",
+});
+
+const byBytes = await transcribe.as.bytes(fs.readFileSync("./audio.mp3"), {
+  mediaFormat: "mp3",
+  languageCode: "en-US",
+});
+
+const byBase64 = await transcribe.as.base64(audioBase64, {
+  mediaFormat: "wav",
+  languageCode: "en-US",
+});
+
+console.log(byUri.text);
+console.log(byUri.tokens[0]); // full AWS item order, punctuation included
+console.log(byUri.words[0]);  // spoken words only, always timestamped
+console.log(byUri.segments[0]);
+```
+
+### Transcribe result shape
+
+- `text`: full transcript string
+- `tokens`: ordered token stream from AWS, including punctuation tokens with `null` timestamps
+- `words`: spoken-word subset with exact `startTimeSeconds` / `endTimeSeconds`
+- `segments`: parsed `audio_segments` entries with transcript text and `itemIds`
+
+`transcribe.as.bytes(...)` and `transcribe.as.base64(...)` require a staging bucket, either in `aws.Transcribe({ stagingBucket })` or per call. Provide exactly one of `languageCode` or `identifyLanguage: true`.
+
+---
+
 ## EC2
 
 ```ts

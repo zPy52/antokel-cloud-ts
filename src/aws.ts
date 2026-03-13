@@ -6,14 +6,17 @@ import { SubmoduleRekognition } from './rekognition';
 import { S3Client } from '@aws-sdk/client-s3';
 import { EC2Client } from '@aws-sdk/client-ec2';
 import { RekognitionClient } from '@aws-sdk/client-rekognition';
+import { TranscribeClient } from '@aws-sdk/client-transcribe';
 import { AntokelDynamoDb, TableConfig } from './dynamodb';
 import { DynamoDbService } from './dynamodb/services/dynamodb-service';
+import { TranscribeConfig, TranscribeWrapper } from './transcribe';
 
 export class AntokelAws {
   private awsConfig: AwsConfig;
   private _s3Client?: S3Client;
   private _ec2Client?: EC2Client;
   private _rekognitionClient?: RekognitionClient;
+  private _transcribeClient?: TranscribeClient;
 
   constructor(config?: AwsConfig) {
     this.awsConfig = config || {};
@@ -26,46 +29,44 @@ export class AntokelAws {
     });
   }
 
+  private createAwsClientConfig(): any {
+    const cfg: any = { region: this.awsConfig.region || process.env.AWS_REGION || 'us-east-1' };
+    if (this.awsConfig.accessKeyId && this.awsConfig.secretAccessKey) {
+      cfg.credentials = {
+        accessKeyId: this.awsConfig.accessKeyId,
+        secretAccessKey: this.awsConfig.secretAccessKey,
+      };
+    }
+
+    return cfg;
+  }
+
   private getS3Client(): S3Client {
     if (!this._s3Client) {
-      const cfg: any = { region: this.awsConfig.region || process.env.AWS_REGION || 'us-east-1' };
-      if (this.awsConfig.accessKeyId && this.awsConfig.secretAccessKey) {
-        cfg.credentials = {
-          accessKeyId: this.awsConfig.accessKeyId,
-          secretAccessKey: this.awsConfig.secretAccessKey,
-        };
-      }
-      this._s3Client = new S3Client(cfg);
+      this._s3Client = new S3Client(this.createAwsClientConfig());
     }
     return this._s3Client;
   }
 
   private getEc2Client(): EC2Client {
     if (!this._ec2Client) {
-      const cfg: any = { region: this.awsConfig.region || process.env.AWS_REGION || 'us-east-1' };
-      if (this.awsConfig.accessKeyId && this.awsConfig.secretAccessKey) {
-        cfg.credentials = {
-          accessKeyId: this.awsConfig.accessKeyId,
-          secretAccessKey: this.awsConfig.secretAccessKey,
-        };
-      }
-      this._ec2Client = new EC2Client(cfg);
+      this._ec2Client = new EC2Client(this.createAwsClientConfig());
     }
     return this._ec2Client;
   }
 
   private getRekognitionClient(): RekognitionClient {
     if (!this._rekognitionClient) {
-      const cfg: any = { region: this.awsConfig.region || process.env.AWS_REGION || 'us-east-1' };
-      if (this.awsConfig.accessKeyId && this.awsConfig.secretAccessKey) {
-        cfg.credentials = {
-          accessKeyId: this.awsConfig.accessKeyId,
-          secretAccessKey: this.awsConfig.secretAccessKey,
-        };
-      }
-      this._rekognitionClient = new RekognitionClient(cfg);
+      this._rekognitionClient = new RekognitionClient(this.createAwsClientConfig());
     }
     return this._rekognitionClient;
+  }
+
+  private getTranscribeClient(): TranscribeClient {
+    if (!this._transcribeClient) {
+      this._transcribeClient = new TranscribeClient(this.createAwsClientConfig());
+    }
+    return this._transcribeClient;
   }
 
   /**
@@ -90,6 +91,13 @@ export class AntokelAws {
   }
 
   /**
+   * Generates a Transcribe service facade.
+   */
+  public Transcribe(config?: TranscribeConfig): TranscribeWrapper {
+    return new TranscribeWrapper(this.getTranscribeClient(), this.getS3Client(), config);
+  }
+
+  /**
    * Generates a type-safe DynamoDB ORM table mapper.
    */
   public Dynamo<T extends z.ZodTypeAny>(config: TableConfig<T>): AntokelDynamoDb<T> {
@@ -102,3 +110,4 @@ export { S3Wrapper, SubmoduleS3AsText, SubmoduleS3Presigned } from './s3';
 export { Ec2Wrapper, SubmoduleEc2Instance } from './ec2';
 export type { Ec2InstanceConfig } from './ec2';
 export * from './rekognition';
+export * from './transcribe';
