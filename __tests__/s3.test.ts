@@ -200,3 +200,67 @@ test('SubmoduleS3Presigned normalizes keys before signing', async () => {
     },
   ]);
 });
+
+test('SubmoduleS3Presigned signs requests with the host header', async () => {
+  const presigned = new SubmoduleS3Presigned(
+    createClient(),
+    'bucket',
+    'folder/',
+  ) as any;
+  const captured: Array<{ headers: Record<string, string | undefined>; hostname: string; port?: number }> =
+    [];
+
+  presigned.s3Client.config.credentials = async () => ({
+    accessKeyId: 'key',
+    secretAccessKey: 'secret',
+  });
+  presigned.resolveRegion = async () => 'us-east-1';
+  presigned.resolveEndpoint = async () => new URL('https://example.com:8443/base/');
+  presigned.createSigner = () => ({
+    presign: async (request: {
+      protocol: string;
+      hostname: string;
+      port?: number;
+      path: string;
+      headers: Record<string, string | undefined>;
+    }) => {
+      captured.push({
+        headers: request.headers,
+        hostname: request.hostname,
+        port: request.port,
+      });
+      return {
+        protocol: request.protocol,
+        hostname: request.hostname,
+        port: request.port,
+        path: request.path,
+        query: {
+          'X-Amz-SignedHeaders': request.headers.host ? 'host' : '',
+        },
+      };
+    },
+  });
+
+  const download = await presigned.download('asset.webp');
+  const upload = await presigned.upload('asset.webp', {
+    contentType: 'image/webp',
+  });
+
+  assert.equal(download, 'https://example.com:8443/base/folder/asset.webp?X-Amz-SignedHeaders=host');
+  assert.equal(upload.url, 'https://example.com:8443/base/folder/asset.webp?X-Amz-SignedHeaders=host');
+  assert.deepEqual(captured, [
+    {
+      headers: { host: 'example.com:8443' },
+      hostname: 'example.com',
+      port: 8443,
+    },
+    {
+      headers: {
+        host: 'example.com:8443',
+        'content-type': 'image/webp',
+      },
+      hostname: 'example.com',
+      port: 8443,
+    },
+  ]);
+});

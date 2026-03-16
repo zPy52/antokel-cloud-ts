@@ -75,7 +75,10 @@ export class SubmoduleS3Presigned {
       port: endpoint.port ? Number(endpoint.port) : undefined,
       method: input.method,
       path: `${endpoint.pathname.replace(/\/$/, '')}/${encodeS3Path(input.fullPath)}`,
-      headers: input.contentType ? { 'content-type': input.contentType } : {},
+      headers: {
+        host: endpoint.host,
+        ...(input.contentType ? { 'content-type': input.contentType } : {}),
+      },
     });
 
     return signer.presign(request, {
