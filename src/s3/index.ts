@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import { Buffer } from 'buffer';
-import { Source } from './types';
+import { S3StorageClass, S3UploadOptions, Source } from './types';
 import { randomUUID } from 'crypto';
 import { SubmoduleS3AsText } from './as-text';
 import { SubmoduleS3Presigned } from './presigned';
@@ -10,11 +10,23 @@ import {
   GetObjectCommand,
   PutObjectCommand,
   S3Client,
+  StorageClass,
 } from '@aws-sdk/client-s3';
 import { resolveS3Key } from './shared';
 
 export const AsBase64 = Symbol('base64');
 export const AsBytes = Symbol('bytes');
+
+const STORAGE_CLASS_MAP: Record<S3StorageClass, StorageClass> = {
+  standard: StorageClass.STANDARD,
+  standard_ia: StorageClass.STANDARD_IA,
+  onezone_ia: StorageClass.ONEZONE_IA,
+  intelligent_tiering: StorageClass.INTELLIGENT_TIERING,
+  glacier_ir: StorageClass.GLACIER_IR,
+  glacier: StorageClass.GLACIER,
+  deep_archive: StorageClass.DEEP_ARCHIVE,
+  express_onezone: StorageClass.EXPRESS_ONEZONE,
+};
 
 async function sourceToBuffer(source: Source): Promise<Buffer> {
   if (Buffer.isBuffer(source)) {
@@ -79,7 +91,7 @@ export class S3Wrapper {
    * Upload an object to S3.
    * If a key is not provided, a random UUID will be used.
    */
-  public async upload(source: Source, key?: string): Promise<string> {
+  public async upload(source: Source, key?: string, options: S3UploadOptions = {}): Promise<string> {
     const finalKey = key || randomUUID();
     const body = await sourceToBuffer(source);
     const resolvedKey = resolveS3Key(this.defaultPrefix, finalKey);
@@ -98,6 +110,9 @@ export class S3Wrapper {
         Key: resolvedKey,
         Body: body,
         ContentType: contentType,
+        ...(options.storageClass
+          ? { StorageClass: STORAGE_CLASS_MAP[options.storageClass] }
+          : {}),
       }),
     );
     return finalKey;
@@ -183,6 +198,8 @@ export { SubmoduleS3AsText } from './as-text';
 export { SubmoduleS3Presigned } from './presigned';
 export type {
   Source,
+  S3StorageClass,
+  S3UploadOptions,
   S3PresignedDownloadOptions,
   S3PresignedUploadOptions,
   S3PresignedUploadResult,

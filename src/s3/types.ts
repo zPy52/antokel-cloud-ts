@@ -4,6 +4,20 @@ import { Source } from '../types';
 
 export type { Source };
 
+export type S3StorageClass =
+  | 'standard'
+  | 'standard_ia'
+  | 'onezone_ia'
+  | 'intelligent_tiering'
+  | 'glacier_ir'
+  | 'glacier'
+  | 'deep_archive'
+  | 'express_onezone';
+
+export interface S3UploadOptions {
+  storageClass?: S3StorageClass;
+}
+
 export interface S3PresignedUploadOptions {
   expiresInSeconds?: number;
   contentType?: string;

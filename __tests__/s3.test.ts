@@ -124,6 +124,39 @@ test('S3Wrapper upload and download use the same normalized key format', async (
   assert.deepEqual(gets[1].input, { Bucket: 'bucket', Key: 'folder/file.txt' });
 });
 
+test('S3Wrapper.upload maps lowercase storageClass values to AWS storage classes', async () => {
+  const sent: unknown[] = [];
+  const s3 = new S3Wrapper(
+    createClient(async (command) => {
+      sent.push(command);
+      return {};
+    }),
+    'bucket',
+    'folder/',
+  );
+
+  await s3.upload('archive', 'archive.txt', { storageClass: 'glacier' });
+  await s3.upload('tiered', 'tiered.txt', { storageClass: 'intelligent_tiering' });
+
+  const puts = sent.filter((command) => command instanceof PutObjectCommand) as PutObjectCommand[];
+
+  assert.equal(puts.length, 2);
+  assert.deepEqual(puts[0].input, {
+    Bucket: 'bucket',
+    Key: 'folder/archive.txt',
+    Body: Buffer.from('archive'),
+    ContentType: 'application/octet-stream',
+    StorageClass: 'GLACIER',
+  });
+  assert.deepEqual(puts[1].input, {
+    Bucket: 'bucket',
+    Key: 'folder/tiered.txt',
+    Body: Buffer.from('tiered'),
+    ContentType: 'application/octet-stream',
+    StorageClass: 'INTELLIGENT_TIERING',
+  });
+});
+
 test('SubmoduleS3AsText normalizes prefixed keys for read, write, and streamLines', async () => {
   const sent: unknown[] = [];
   const asText = new SubmoduleS3AsText(

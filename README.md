@@ -32,6 +32,7 @@ const s3 = aws.S3("my-bucket");
 
 // Upload / download / move / delete
 await s3.upload(fs.readFileSync("./local/file.pdf"), "path/on/s3.pdf");
+// await s3.upload(fs.readFileSync("./local/file.pdf"), "path/on/s3.pdf", { storageClass: "glacier" });
 await s3.download("path/on/s3.pdf", "./local/file.pdf");
 await s3.download("path/on/s3.pdf", s3.as.base64); // "data:application/pdf;base64,..."
 await s3.download("path/on/s3.pdf", s3.as.bytes);  // Buffer
@@ -47,6 +48,8 @@ for await (const line of s3.asText.streamLines("data.csv")) {
   console.log(line);
 }
 ```
+
+`storageClass` is optional. Supported values are `standard`, `standard_ia`, `onezone_ia`, `intelligent_tiering`, `glacier_ir`, `glacier`, `deep_archive`, and `express_onezone`. If omitted, S3 uses its normal default storage class.
 
 ### Presigned URLs
 
