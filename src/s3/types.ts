@@ -19,11 +19,22 @@ export interface S3UploadOptions {
 }
 
 export interface S3PresignedUploadOptions {
+  /**
+   * How long the presigned URL remains valid, in seconds.
+   * Defaults to 900 seconds (15 minutes). Maximum 604800 seconds (7 days).
+   */
   expiresInSeconds?: number;
+  /**
+   * Optional content type that the client must send with the upload request.
+   */
   contentType?: string;
 }
 
 export interface S3PresignedDownloadOptions {
+  /**
+   * How long the presigned URL remains valid, in seconds.
+   * Defaults to 900 seconds (15 minutes). Maximum 604800 seconds (7 days).
+   */
   expiresInSeconds?: number;
 }
 

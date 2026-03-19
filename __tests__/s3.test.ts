@@ -234,6 +234,46 @@ test('SubmoduleS3Presigned normalizes keys before signing', async () => {
   ]);
 });
 
+test('SubmoduleS3Presigned defaults to a 15 minute expiration when none is provided', async () => {
+  const presigned = new SubmoduleS3Presigned(createClient(), 'bucket', 'folder/') as any;
+  let capturedExpiresIn: number | undefined;
+
+  presigned.s3Client.config.credentials = async () => ({
+    accessKeyId: 'key',
+    secretAccessKey: 'secret',
+  });
+  presigned.resolveRegion = async () => 'us-east-1';
+  presigned.resolveEndpoint = async () => new URL('https://example.com/base/');
+  presigned.createSigner = () => ({
+    presign: async (_request: unknown, options: { expiresIn: number }) => {
+      capturedExpiresIn = options.expiresIn;
+      return {
+        protocol: 'https:',
+        hostname: 'example.com',
+        path: '/signed',
+        query: {},
+      };
+    },
+  });
+
+  await presigned.download('asset.webp');
+
+  assert.equal(capturedExpiresIn, 900);
+});
+
+test('SubmoduleS3Presigned validates expiration bounds before signing', async () => {
+  const presigned = new SubmoduleS3Presigned(createClient(), 'bucket', 'folder/');
+
+  await assert.rejects(
+    presigned.download('asset.webp', { expiresInSeconds: 0 }),
+    /expiresInSeconds must be a positive integer\./,
+  );
+  await assert.rejects(
+    presigned.upload('asset.webp', { expiresInSeconds: 604801 }),
+    /expiresInSeconds cannot exceed 604800 seconds \(7 days\)\./,
+  );
+});
+
 test('SubmoduleS3Presigned signs requests with the host header', async () => {
   const presigned = new SubmoduleS3Presigned(
     createClient(),

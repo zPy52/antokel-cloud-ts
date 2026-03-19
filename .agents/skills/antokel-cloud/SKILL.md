@@ -26,6 +26,7 @@ Use this skill when a task depends on the `antokel-cloud` SDK. Treat `README.md`
 
 - Use `AntokelAws` as the top-level factory for all services.
 - Keep examples aligned with documented constructor patterns, method names, and argument order.
+- Treat S3 presigned URLs as temporary access links: support `expiresInSeconds`, default to 900 seconds (15 minutes), and do not exceed 604800 seconds (7 days).
 - When the user asks for “how do I do X with antokel-cloud?”, map the request to the smallest relevant reference file instead of loading every SDK detail.
 - When documenting or reviewing code, call out constraints explicitly: Node.js 18+, AWS credentials required, and zod schema validation for the DynamoDB ORM.
 

@@ -16,6 +16,27 @@ import {
   S3PresignedUploadResult,
 } from './types';
 
+const DEFAULT_PRESIGNED_EXPIRATION_SECONDS = 900;
+const MAX_PRESIGNED_EXPIRATION_SECONDS = 604800;
+
+function resolveExpiresInSeconds(expiresInSeconds?: number): number {
+  if (expiresInSeconds === undefined) {
+    return DEFAULT_PRESIGNED_EXPIRATION_SECONDS;
+  }
+
+  if (!Number.isInteger(expiresInSeconds) || expiresInSeconds <= 0) {
+    throw new Error('expiresInSeconds must be a positive integer.');
+  }
+
+  if (expiresInSeconds > MAX_PRESIGNED_EXPIRATION_SECONDS) {
+    throw new Error(
+      `expiresInSeconds cannot exceed ${MAX_PRESIGNED_EXPIRATION_SECONDS} seconds (7 days).`,
+    );
+  }
+
+  return expiresInSeconds;
+}
+
 export class SubmoduleS3Presigned {
   constructor(
     private readonly s3Client: S3Client,
@@ -64,6 +85,7 @@ export class SubmoduleS3Presigned {
     expiresInSeconds?: number;
     contentType?: string;
   }): Promise<SignedHttpRequest> {
+    const expiresInSeconds = resolveExpiresInSeconds(input.expiresInSeconds);
     const endpoint = await this.resolveEndpoint();
     const credentials = await this.s3Client.config.credentials();
     const region = await this.resolveRegion();
@@ -82,7 +104,7 @@ export class SubmoduleS3Presigned {
     });
 
     return signer.presign(request, {
-      expiresIn: input.expiresInSeconds ?? 900,
+      expiresIn: expiresInSeconds,
     });
   }
 

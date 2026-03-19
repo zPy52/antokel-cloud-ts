@@ -66,6 +66,7 @@ if (!selectedImage) {
 
 const upload = await s3.presigned.upload("path/to/file.webp", {
   contentType: selectedImage.type,
+  expiresInSeconds: 1800, // 30 minutes
 });
 
 const uploadResponse = await fetch(upload.url, {
@@ -79,8 +80,12 @@ if (!uploadResponse.ok) {
 }
 
 const { bucket, pathToFile } = upload;
-const getUrl = await s3.presigned.download(pathToFile);
+const getUrl = await s3.presigned.download(pathToFile, {
+  expiresInSeconds: 1800, // 30 minutes
+});
 ```
+
+Presigned URLs default to `900` seconds (15 minutes) if you omit `expiresInSeconds`. Set a custom TTL when you need temporary access, up to `604800` seconds (7 days).
 
 Use `PUT` for browser uploads. A raw `fetch(..., { method: "POST", body: file })` request is not a valid S3 presigned upload flow, and S3 will not return JSON for that upload request.
 
