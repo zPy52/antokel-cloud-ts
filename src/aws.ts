@@ -1,15 +1,15 @@
 import { z } from 'zod';
-import { S3Wrapper } from './s3';
-import { Ec2Wrapper } from './ec2';
-import { AwsConfig } from './dynamodb/types';
-import { SubmoduleRekognition } from './rekognition';
 import { S3Client } from '@aws-sdk/client-s3';
 import { EC2Client } from '@aws-sdk/client-ec2';
 import { RekognitionClient } from '@aws-sdk/client-rekognition';
 import { TranscribeClient } from '@aws-sdk/client-transcribe';
-import { AntokelDynamoDb, TableConfig } from './dynamodb';
-import { DynamoDbService } from './dynamodb/services/dynamodb-service';
-import { TranscribeConfig, TranscribeWrapper } from './transcribe';
+import { AntokelDynamoDb, TableConfig } from './aws/dynamodb';
+import { AwsConfig } from './aws/dynamodb/types';
+import { DynamoDbService } from './aws/dynamodb/services/dynamodb-service';
+import { Ec2Wrapper } from './aws/ec2';
+import { SubmoduleRekognition } from './aws/rekognition';
+import { S3Wrapper } from './aws/s3';
+import { TranscribeConfig, TranscribeWrapper } from './aws/transcribe';
 
 export class AntokelAws {
   private awsConfig: AwsConfig;
@@ -105,9 +105,9 @@ export class AntokelAws {
   }
 }
 
-export * from './dynamodb';
-export { S3Wrapper, SubmoduleS3AsText, SubmoduleS3Presigned } from './s3';
-export { Ec2Wrapper, SubmoduleEc2Instance } from './ec2';
-export type { Ec2InstanceConfig } from './ec2';
-export * from './rekognition';
-export * from './transcribe';
+export * from './aws/dynamodb';
+export { S3Wrapper, SubmoduleS3AsText, SubmoduleS3Presigned } from './aws/s3';
+export { Ec2Wrapper, SubmoduleEc2Instance } from './aws/ec2';
+export type { Ec2InstanceConfig } from './aws/ec2';
+export * from './aws/rekognition';
+export * from './aws/transcribe';

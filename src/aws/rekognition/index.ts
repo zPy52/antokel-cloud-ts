@@ -7,7 +7,7 @@ import {
   DetectProtectiveEquipmentCommand,
   BoundingBox,
 } from '@aws-sdk/client-rekognition';
-import { Source } from '../types';
+import { Source } from '../../types';
 import { toImageBytes } from './utils';
 import {
   RekognitionLabel,

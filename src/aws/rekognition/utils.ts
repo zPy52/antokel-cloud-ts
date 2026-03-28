@@ -1,4 +1,4 @@
-import { Source } from '../types';
+import { Source } from '../../types';
 
 const DATA_URL_PREFIX = 'data:';
 

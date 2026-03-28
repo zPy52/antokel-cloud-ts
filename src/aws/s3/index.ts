@@ -1,9 +1,6 @@
 import * as fs from 'fs';
 import { Buffer } from 'buffer';
-import { S3StorageClass, S3UploadOptions, Source } from './types';
 import { randomUUID } from 'crypto';
-import { SubmoduleS3AsText } from './as-text';
-import { SubmoduleS3Presigned } from './presigned';
 import {
   CopyObjectCommand,
   DeleteObjectCommand,
@@ -12,10 +9,11 @@ import {
   S3Client,
   StorageClass,
 } from '@aws-sdk/client-s3';
+import { AsBase64, AsBytes, resolveSourceContentType, sourceToBuffer } from '../../object-storage/shared';
+import { SubmoduleS3AsText } from './as-text';
+import { SubmoduleS3Presigned } from './presigned';
+import { S3StorageClass, S3UploadOptions, Source } from './types';
 import { resolveS3Key } from './shared';
-
-export const AsBase64 = Symbol('base64');
-export const AsBytes = Symbol('bytes');
 
 const STORAGE_CLASS_MAP: Record<S3StorageClass, StorageClass> = {
   standard: StorageClass.STANDARD,
@@ -27,47 +25,6 @@ const STORAGE_CLASS_MAP: Record<S3StorageClass, StorageClass> = {
   deep_archive: StorageClass.DEEP_ARCHIVE,
   express_onezone: StorageClass.EXPRESS_ONEZONE,
 };
-
-async function sourceToBuffer(source: Source): Promise<Buffer> {
-  if (Buffer.isBuffer(source)) {
-    return source;
-  }
-  if (source instanceof Uint8Array) {
-    return Buffer.from(source);
-  }
-  if (source instanceof ArrayBuffer) {
-    return Buffer.from(source);
-  }
-  if (source instanceof URL) {
-    const response = await fetch(source);
-    if (!response.ok) throw new Error(`Failed to fetch source: ${response.statusText}`);
-    return Buffer.from(await response.arrayBuffer());
-  }
-  if (typeof source === 'string') {
-    if (source.startsWith('http://') || source.startsWith('https://')) {
-      const response = await fetch(source);
-      if (!response.ok) throw new Error(`Failed to fetch source: ${response.statusText}`);
-      return Buffer.from(await response.arrayBuffer());
-    }
-    if (source.startsWith('data:')) {
-      const base64Index = source.indexOf('base64,');
-      if (base64Index !== -1) {
-        return Buffer.from(source.substring(base64Index + 7), 'base64');
-      }
-      return Buffer.from(source.split(',')[1] || '');
-    }
-    // Attempt to guess if base64 (no spaces, valid short base64 check)
-    if (!/\s/.test(source) && /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(source)) {
-      try {
-        return Buffer.from(source, 'base64');
-      } catch {
-        // Fallback to plain string interpretation
-      }
-    }
-    return Buffer.from(source);
-  }
-  throw new Error('Unsupported source type');
-}
 
 export class S3Wrapper {
   public readonly asText: SubmoduleS3AsText;
@@ -95,14 +52,7 @@ export class S3Wrapper {
     const finalKey = key || randomUUID();
     const body = await sourceToBuffer(source);
     const resolvedKey = resolveS3Key(this.defaultPrefix, finalKey);
-
-    let contentType = 'application/octet-stream';
-    if (typeof source === 'string' && source.startsWith('data:')) {
-      const match = source.match(/^data:(.*?);/);
-      if (match && match[1]) {
-        contentType = match[1];
-      }
-    }
+    const contentType = resolveSourceContentType(source);
 
     await this.s3Client.send(
       new PutObjectCommand({

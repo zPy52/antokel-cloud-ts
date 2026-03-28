@@ -8,10 +8,10 @@ import {
   PutObjectCommand,
 } from '@aws-sdk/client-s3';
 
-import { S3Wrapper } from '../src/s3';
-import { SubmoduleS3AsText } from '../src/s3/as-text';
-import { SubmoduleS3Presigned } from '../src/s3/presigned';
-import { resolveS3Key } from '../src/s3/shared';
+import { S3Wrapper } from '../src/aws/s3';
+import { SubmoduleS3AsText } from '../src/aws/s3/as-text';
+import { SubmoduleS3Presigned } from '../src/aws/s3/presigned';
+import { resolveS3Key } from '../src/aws/s3/shared';
 
 function createBody(text: string) {
   const bytes = Buffer.from(text);

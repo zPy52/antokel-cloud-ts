@@ -16,7 +16,7 @@ import {
   SubmoduleTranscribeAs,
   TranscribeWrapper,
 } from '../src';
-import { TranscribeWrapper as DirectTranscribeWrapper } from '../src/transcribe';
+import { TranscribeWrapper as DirectTranscribeWrapper } from '../src/aws/transcribe';
 
 function createBody(text: string) {
   const bytes = Buffer.from(text);

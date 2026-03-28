@@ -4,51 +4,31 @@ import { HttpRequest } from '@smithy/protocol-http';
 import { SignatureV4MultiRegion } from '@aws-sdk/signature-v4-multi-region';
 import type { AwsCredentialIdentity, HttpRequest as SignedHttpRequest } from '@smithy/types';
 import {
-  encodeS3Path,
+  ObjectStoragePresignedDownloadOptions,
+  ObjectStoragePresignedUploadOptions,
+  ObjectStoragePresignedUploadResult,
+} from './types';
+import {
+  encodeObjectStoragePath,
   formatPresignedRequest,
-  resolveS3Key,
   resolveBooleanConfig,
   resolveEndpointUrl,
+  resolveObjectStorageKey,
+  resolvePresignedExpirationSeconds,
 } from './shared';
-import {
-  S3PresignedDownloadOptions,
-  S3PresignedUploadOptions,
-  S3PresignedUploadResult,
-} from './types';
 
-const DEFAULT_PRESIGNED_EXPIRATION_SECONDS = 900;
-const MAX_PRESIGNED_EXPIRATION_SECONDS = 604800;
-
-function resolveExpiresInSeconds(expiresInSeconds?: number): number {
-  if (expiresInSeconds === undefined) {
-    return DEFAULT_PRESIGNED_EXPIRATION_SECONDS;
-  }
-
-  if (!Number.isInteger(expiresInSeconds) || expiresInSeconds <= 0) {
-    throw new Error('expiresInSeconds must be a positive integer.');
-  }
-
-  if (expiresInSeconds > MAX_PRESIGNED_EXPIRATION_SECONDS) {
-    throw new Error(
-      `expiresInSeconds cannot exceed ${MAX_PRESIGNED_EXPIRATION_SECONDS} seconds (7 days).`,
-    );
-  }
-
-  return expiresInSeconds;
-}
-
-export class SubmoduleS3Presigned {
+export class ObjectStoragePresignedModule {
   constructor(
-    private readonly s3Client: S3Client,
-    private readonly bucketName: string,
-    private readonly defaultPrefix: string,
+    protected readonly s3Client: S3Client,
+    protected readonly bucketName: string,
+    protected readonly defaultPrefix: string,
   ) {}
 
   public async upload(
     cloudPath: string,
-    options: S3PresignedUploadOptions = {},
-  ): Promise<S3PresignedUploadResult> {
-    const fullPath = resolveS3Key(this.defaultPrefix, cloudPath);
+    options: ObjectStoragePresignedUploadOptions = {},
+  ): Promise<ObjectStoragePresignedUploadResult> {
+    const fullPath = resolveObjectStorageKey(this.defaultPrefix, cloudPath);
     const signedRequest = await this.signRequest({
       method: 'PUT',
       fullPath,
@@ -67,9 +47,9 @@ export class SubmoduleS3Presigned {
 
   public async download(
     cloudPath: string,
-    options: S3PresignedDownloadOptions = {},
+    options: ObjectStoragePresignedDownloadOptions = {},
   ): Promise<string> {
-    const fullPath = resolveS3Key(this.defaultPrefix, cloudPath);
+    const fullPath = resolveObjectStorageKey(this.defaultPrefix, cloudPath);
     const signedRequest = await this.signRequest({
       method: 'GET',
       fullPath,
@@ -79,13 +59,13 @@ export class SubmoduleS3Presigned {
     return formatPresignedRequest(signedRequest);
   }
 
-  private async signRequest(input: {
+  protected async signRequest(input: {
     method: 'GET' | 'PUT';
     fullPath: string;
     expiresInSeconds?: number;
     contentType?: string;
   }): Promise<SignedHttpRequest> {
-    const expiresInSeconds = resolveExpiresInSeconds(input.expiresInSeconds);
+    const expiresInSeconds = resolvePresignedExpirationSeconds(input.expiresInSeconds);
     const endpoint = await this.resolveEndpoint();
     const credentials = await this.s3Client.config.credentials();
     const region = await this.resolveRegion();
@@ -96,7 +76,7 @@ export class SubmoduleS3Presigned {
       hostname: endpoint.hostname,
       port: endpoint.port ? Number(endpoint.port) : undefined,
       method: input.method,
-      path: `${endpoint.pathname.replace(/\/$/, '')}/${encodeS3Path(input.fullPath)}`,
+      path: `${endpoint.pathname.replace(/\/$/, '')}/${encodeObjectStoragePath(input.fullPath)}`,
       headers: {
         host: endpoint.host,
         ...(input.contentType ? { 'content-type': input.contentType } : {}),
@@ -108,7 +88,7 @@ export class SubmoduleS3Presigned {
     });
   }
 
-  private createSigner(credentials: AwsCredentialIdentity, region: string) {
+  protected createSigner(credentials: AwsCredentialIdentity, region: string) {
     return new SignatureV4MultiRegion({
       credentials,
       region,
@@ -117,7 +97,7 @@ export class SubmoduleS3Presigned {
     });
   }
 
-  private async resolveEndpoint(): Promise<URL> {
+  protected async resolveEndpoint(): Promise<URL> {
     const region = await this.resolveRegion();
     const configuredEndpoint = await resolveEndpointUrl(this.s3Client.config.endpoint);
 
@@ -142,7 +122,7 @@ export class SubmoduleS3Presigned {
     return resolved.url;
   }
 
-  private async resolveRegion(): Promise<string> {
+  protected async resolveRegion(): Promise<string> {
     const region = await this.s3Client.config.region();
     return typeof region === 'string' ? region : String(region);
   }

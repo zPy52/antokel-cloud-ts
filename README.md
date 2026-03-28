@@ -13,7 +13,8 @@ pnpm add antokel-cloud
 ## Requirements
 
 - Node.js ≥ 18
-- AWS credentials configured (env vars, `~/.aws/credentials`, or IAM role)
+- AWS credentials configured (env vars, `~/.aws/credentials`, or IAM role) for `AntokelAws`
+- OVH Object Storage credentials for `AntokelOVH`
 
 ---
 
@@ -88,6 +89,57 @@ const getUrl = await s3.presigned.download(pathToFile, {
 Presigned URLs default to `900` seconds (15 minutes) if you omit `expiresInSeconds`. Set a custom TTL when you need temporary access, up to `604800` seconds (7 days).
 
 Use `PUT` for browser uploads. A raw `fetch(..., { method: "POST", body: file })` request is not a valid S3 presigned upload flow, and S3 will not return JSON for that upload request.
+
+---
+
+## OVH Object Storage
+
+```ts
+import * as fs from "fs";
+import { AntokelOVH } from "antokel-cloud";
+
+const ovh = new AntokelOVH({
+  region: "gra",
+  accessKeyId: "...",
+  secretAccessKey: "...",
+});
+
+const storage = ovh.ObjectStorage("my-bucket");
+// with prefix: ovh.ObjectStorage("my-bucket", { prefix: "folder/subfolder" })
+
+await storage.upload(fs.readFileSync("./local/file.pdf"), "path/on/ovh.pdf");
+await storage.download("path/on/ovh.pdf", "./local/file.pdf");
+await storage.download("path/on/ovh.pdf", storage.as.bytes);
+await storage.download("path/on/ovh.pdf", storage.as.base64);
+await storage.move("old/path.pdf", "new/path.pdf");
+await storage.remove("path/on/ovh.pdf");
+
+await storage.asText.write("hello world", "notes.txt");
+const content = await storage.asText.read("notes.txt");
+
+const upload = await storage.presigned.upload("path/to/file.webp", {
+  contentType: "image/webp",
+  expiresInSeconds: 1800,
+});
+```
+
+`AntokelOVH` uses the OVHcloud `io` endpoint (`https://s3.<region>.io.cloud.ovh.net`) with path-style access so presigned URLs work against the S3-compatible Object Storage API.
+
+Supported OVH storage classes for `storage.upload(..., { storageClass })` are:
+
+- `high_performance`
+- `standard`
+- `infrequent_access`
+- `active_archive`
+- `cold_archive`
+
+Regional availability follows OVHcloud's current Object Storage matrix:
+
+- `high_performance` is available in 1-AZ regions such as `gra`, `rbx`, `sbg`, `de`, `uk`, `waw`, `bhs`, `ca-east-tor`, `sgp`, `ap-southeast-syd`, and `ap-south-mum`
+- `active_archive` is available in `eu-west-par` and `eu-south-mil`
+- `cold_archive` is available only in `eu-west-par`
+
+Presigned URLs default to `900` seconds (15 minutes) if you omit `expiresInSeconds`. Upload URLs use `PUT`, matching OVHcloud's S3-compatible presigned flow.
 
 ---
 
