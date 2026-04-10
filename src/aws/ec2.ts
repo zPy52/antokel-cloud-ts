@@ -14,15 +14,6 @@ import {
   type Instance as AwsEc2Instance,
 } from '@aws-sdk/client-ec2';
 
-export interface Ec2InstanceSshConfig {
-  user: string;
-  privateKeyPem?: string;
-  privateKeyPath?: string;
-  host?: string;
-  port?: number;
-  preferPrivateIp?: boolean;
-}
-
 export interface Ec2InstanceConfig {
   id?: string;
   name?: string;
@@ -32,7 +23,15 @@ export interface Ec2InstanceConfig {
   securityGroups?: string[];
   ami?: string;
   userData?: string;
-  ssh?: Ec2InstanceSshConfig;
+}
+
+export interface Ec2SshConfig {
+  instanceId: string;
+  user: string;
+  privateKey: string;
+  host?: string;
+  port?: number;
+  preferPrivateIp?: boolean;
 }
 
 export interface Ec2RunCommandOptions {
@@ -149,6 +148,29 @@ function assertSupportedPrivateKey(privateKeyPath?: string, privateKeyPem?: stri
   }
 }
 
+function resolvePrivateKey(privateKey: string): Pick<
+  Ec2ResolvedSshConfig,
+  'privateKeyPath' | 'privateKeyPem'
+> {
+  const trimmedKey = privateKey.trim();
+  const isPemContent =
+    trimmedKey.includes('-----BEGIN ') ||
+    trimmedKey.includes('-----END ') ||
+    trimmedKey.includes('\n');
+
+  if (isPemContent) {
+    assertSupportedPrivateKey(undefined, trimmedKey);
+    return {
+      privateKeyPem: trimmedKey,
+    };
+  }
+
+  assertSupportedPrivateKey(trimmedKey, undefined);
+  return {
+    privateKeyPath: trimmedKey,
+  };
+}
+
 function assertValidEnv(env?: Record<string, string>): void {
   if (!env) return;
 
@@ -179,6 +201,36 @@ function getPreferredHost(instance: AwsEc2Instance, preferPrivateIp: boolean): s
   const publicHost = instance.PublicDnsName || instance.PublicIpAddress;
   const privateHost = instance.PrivateIpAddress;
   return preferPrivateIp ? privateHost || publicHost : publicHost || privateHost;
+}
+
+async function describeInstanceById(
+  ec2Client: EC2Client,
+  instanceId: string,
+): Promise<Ec2DescribeInstanceDetails> {
+  const resp = await ec2Client.send(
+    new DescribeInstancesCommand({
+      InstanceIds: [instanceId],
+    }),
+  );
+
+  const instance = resp.Reservations?.flatMap((reservation) => reservation.Instances || []).find(
+    (candidate) => candidate.InstanceId === instanceId,
+  );
+
+  if (!instance) {
+    throw new Error(`Could not find EC2 instance "${instanceId}".`);
+  }
+
+  const publicHost = instance.PublicDnsName || instance.PublicIpAddress;
+  const privateHost = instance.PrivateIpAddress;
+
+  return {
+    instance,
+    host: getPreferredHost(instance, false),
+    privateHost,
+    publicHost,
+    state: instance.State?.Name,
+  };
 }
 
 function buildEnvExports(env?: Record<string, string>): string[] {
@@ -390,13 +442,71 @@ export class SubmoduleEc2RemoteCommand {
   }
 }
 
+export class SubmoduleEc2SshTerminal {
+  constructor(
+    private ec2Client: EC2Client,
+    private config: Ec2SshConfig,
+    private runtimeDependencies: Ec2RuntimeDependencies = DEFAULT_RUNTIME_DEPENDENCIES,
+  ) {}
+
+  public async run(
+    command: string,
+    options?: Ec2RunCommandOptions,
+  ): Promise<SubmoduleEc2RemoteCommand> {
+    if (!this.config.instanceId) {
+      throw new Error('`instanceId` is required to run remote commands.');
+    }
+    if (!this.config.user) {
+      throw new Error('`user` is required to run remote commands.');
+    }
+    if (!this.config.privateKey) {
+      throw new Error('`privateKey` is required to run remote commands.');
+    }
+
+    const instanceDetails = await describeInstanceById(this.ec2Client, this.config.instanceId);
+    if (instanceDetails.state !== 'running') {
+      throw new Error('Remote commands can only run while the EC2 instance is in the `running` state.');
+    }
+
+    const host =
+      this.config.host ||
+      getPreferredHost(instanceDetails.instance, this.config.preferPrivateIp === true);
+    if (!host) {
+      throw new Error('Could not resolve an SSH host for this EC2 instance.');
+    }
+
+    const sessionName =
+      options?.sessionName ||
+      buildSessionName(this.runtimeDependencies.now(), this.runtimeDependencies.randomSuffix());
+
+    const resolvedSshConfig: Ec2ResolvedSshConfig = {
+      host,
+      instanceId: this.config.instanceId,
+      port: this.config.port,
+      user: this.config.user,
+      ...resolvePrivateKey(this.config.privateKey),
+    };
+
+    await runSshCommand(
+      resolvedSshConfig,
+      buildRemoteCommandScript(command, sessionName, options),
+      this.runtimeDependencies,
+    );
+
+    return new SubmoduleEc2RemoteCommand(
+      resolvedSshConfig,
+      sessionName,
+      this.runtimeDependencies,
+    );
+  }
+}
+
 export class SubmoduleEc2Instance {
   private _id: string | undefined;
 
   constructor(
     private ec2Client: EC2Client,
     private config: Ec2InstanceConfig,
-    private runtimeDependencies: Ec2RuntimeDependencies = DEFAULT_RUNTIME_DEPENDENCIES,
   ) {
     this._id = config.id;
   }
@@ -434,65 +544,6 @@ export class SubmoduleEc2Instance {
     return instanceId;
   }
 
-  public async run(
-    command: string,
-    options?: Ec2RunCommandOptions,
-  ): Promise<SubmoduleEc2RemoteCommand> {
-    if (!this.id) {
-      throw new Error('No instance ID.');
-    }
-
-    const ssh = this.config.ssh;
-    if (!ssh) {
-      throw new Error('SSH configuration is required to run remote commands.');
-    }
-    if (!ssh.user) {
-      throw new Error('`ssh.user` is required to run remote commands.');
-    }
-    if (!ssh.privateKeyPath && !ssh.privateKeyPem) {
-      throw new Error('SSH requires either `ssh.privateKeyPem` or `ssh.privateKeyPath`.');
-    }
-
-    assertSupportedPrivateKey(ssh.privateKeyPath, ssh.privateKeyPem);
-
-    const instanceDetails = await this.describeCurrentInstance();
-    if (instanceDetails.state !== 'running') {
-      throw new Error('Remote commands can only run while the EC2 instance is in the `running` state.');
-    }
-
-    const host =
-      ssh.host ||
-      getPreferredHost(instanceDetails.instance, ssh.preferPrivateIp === true);
-    if (!host) {
-      throw new Error('Could not resolve an SSH host for this EC2 instance.');
-    }
-
-    const sessionName =
-      options?.sessionName ||
-      buildSessionName(this.runtimeDependencies.now(), this.runtimeDependencies.randomSuffix());
-
-    const resolvedSshConfig: Ec2ResolvedSshConfig = {
-      host,
-      instanceId: this.id,
-      port: ssh.port,
-      privateKeyPath: ssh.privateKeyPath,
-      privateKeyPem: ssh.privateKeyPem,
-      user: ssh.user,
-    };
-
-    await runSshCommand(
-      resolvedSshConfig,
-      buildRemoteCommandScript(command, sessionName, options),
-      this.runtimeDependencies,
-    );
-
-    return new SubmoduleEc2RemoteCommand(
-      resolvedSshConfig,
-      sessionName,
-      this.runtimeDependencies,
-    );
-  }
-
   public async start(): Promise<void> {
     if (!this.id) throw new Error('No instance ID.');
     await this.ec2Client.send(new StartInstancesCommand({ InstanceIds: [this.id] }));
@@ -508,37 +559,6 @@ export class SubmoduleEc2Instance {
     await this.ec2Client.send(new TerminateInstancesCommand({ InstanceIds: [this.id] }));
   }
 
-  private async describeCurrentInstance(): Promise<Ec2DescribeInstanceDetails> {
-    if (!this.id) {
-      throw new Error('No instance ID.');
-    }
-
-    const resp = await this.ec2Client.send(
-      new DescribeInstancesCommand({
-        InstanceIds: [this.id],
-      }),
-    );
-
-    const instance = resp.Reservations?.flatMap((reservation) => reservation.Instances || []).find(
-      (candidate) => candidate.InstanceId === this.id,
-    );
-
-    if (!instance) {
-      throw new Error(`Could not find EC2 instance "${this.id}".`);
-    }
-
-    const publicHost = instance.PublicDnsName || instance.PublicIpAddress;
-    const privateHost = instance.PrivateIpAddress;
-
-    return {
-      instance,
-      host: getPreferredHost(instance, this.config.ssh?.preferPrivateIp === true),
-      privateHost,
-      publicHost,
-      state: instance.State?.Name,
-    };
-  }
-
   private setId(instanceId: string): void {
     this._id = instanceId;
     this.config.id = instanceId;
@@ -552,7 +572,11 @@ export class Ec2Wrapper {
   ) {}
 
   public Instance(config: Ec2InstanceConfig): SubmoduleEc2Instance {
-    return new SubmoduleEc2Instance(this.ec2Client, config, this.runtimeDependencies);
+    return new SubmoduleEc2Instance(this.ec2Client, config);
+  }
+
+  public SSH(config: Ec2SshConfig): SubmoduleEc2SshTerminal {
+    return new SubmoduleEc2SshTerminal(this.ec2Client, config, this.runtimeDependencies);
   }
 
   public async findByNameRegex(regexPattern: string): Promise<SubmoduleEc2Instance[]> {

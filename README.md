@@ -315,15 +315,6 @@ const instance = ec2.Instance({
   securityGroups: ["sg-01234"],
   ami:            "ami-0c55b159cbfafe1f0",
   userData:       "#!/bin/bash\necho hello",
-  ssh: {
-    user:           "ubuntu",
-    privateKeyPath: "/Users/me/.ssh/my-worker.pem",
-    // or: privateKeyPem: process.env.MY_WORKER_PRIVATE_KEY_PEM,
-    // optional:
-    // host: "ec2-1-2-3-4.compute.amazonaws.com",
-    // port: 22,
-    // preferPrivateIp: true,
-  },
 });
 
 const instanceId = await instance.create();
@@ -332,7 +323,18 @@ console.log(instance.id); // same value after create()
 
 await instance.start();
 
-const remote = await instance.run("npm run worker", {
+const terminal = ec2.SSH({
+  instanceId: instance.id!,
+  user:       "ubuntu",
+  privateKey: "/Users/me/.ssh/my-worker.pem",
+  // or: privateKey: process.env.MY_WORKER_PRIVATE_KEY_PEM!,
+  // optional:
+  // host: "ec2-1-2-3-4.compute.amazonaws.com",
+  // port: 22,
+  // preferPrivateIp: true,
+});
+
+const remote = await terminal.run("npm run worker", {
   sessionName: "my-screen",
   workingDirectory: "/srv/app",
   env: {
@@ -358,10 +360,12 @@ await instance.terminate();
 - `create()` returns the resolved EC2 instance ID and also updates `instance.id`
 - If `instance.id` already exists, `create()` returns it without creating a second instance
 - Remote command execution is Linux-only in v1 and requires the instance to already be in the `running` state
-- Remote command execution requires `ssh.user` plus either `ssh.privateKeyPath` or `ssh.privateKeyPem`
+- Remote command execution lives on `ec2.SSH(...)`, not `ec2.Instance(...)`
+- `ec2.SSH(...)` requires `instanceId`, `user`, and a single `privateKey` string
+- `privateKey` accepts either inline PEM/OpenSSH key content or a local private key file path
 - `.ppk` keys are not supported in v1; use PEM/OpenSSH private keys
 - `keyPair` is still used for EC2 creation, but SSH authentication uses only the provided private key
-- If `ssh.host` is omitted, the SDK resolves the host from EC2 metadata using public DNS/IP first, then private IP. Set `preferPrivateIp: true` to flip that order
+- If `host` is omitted, the SDK resolves the host from EC2 metadata using public DNS/IP first, then private IP. Set `preferPrivateIp: true` to flip that order
 - Remote commands run inside detached `screen` sessions and write combined output to `~/.antokel-cloud/ec2/<sessionName>/output.log`
 - The remote instance must already have `bash` and `screen` installed
 - The returned handle is intentionally non-interactive. To manually reattach, use your own SSH command and run `screen -r <sessionName>` on the instance

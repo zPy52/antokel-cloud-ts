@@ -8,6 +8,7 @@ import {
 import {
   SubmoduleEc2Instance,
   SubmoduleEc2RemoteCommand,
+  SubmoduleEc2SshTerminal,
 } from '../src/aws/ec2';
 
 function createClient(sendImpl?: (command: unknown) => Promise<unknown>) {
@@ -118,64 +119,58 @@ test('SubmoduleEc2Instance.create throws when AWS does not return an instance id
   assert.equal(instance.id, undefined);
 });
 
-test('SubmoduleEc2Instance.run validates instance id, ssh user, and private key input', async () => {
+test('SubmoduleEc2SshTerminal.run validates instance id, user, and private key input', async () => {
   const runtimeDependencies = createRuntimeDependencies();
 
-  const missingId = new SubmoduleEc2Instance(
+  const missingId = new SubmoduleEc2SshTerminal(
     createClient(),
     {
-      ssh: {
-        user: 'ubuntu',
-        privateKeyPem: '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----',
-      },
+      instanceId: '',
+      user: 'ubuntu',
+      privateKey: '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----',
     },
     runtimeDependencies,
   );
-  await assert.rejects(missingId.run('echo hi'), /No instance ID/);
+  await assert.rejects(missingId.run('echo hi'), /instanceId/);
 
-  const missingUser = new SubmoduleEc2Instance(
+  const missingUser = new SubmoduleEc2SshTerminal(
     createClient(async () => createDescribeResponse()),
     {
-      id: 'i-123',
-      ssh: {
-        user: '',
-        privateKeyPem: '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----',
-      },
+      instanceId: 'i-123',
+      user: '',
+      privateKey: '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----',
     },
     runtimeDependencies,
   );
-  await assert.rejects(missingUser.run('echo hi'), /ssh\.user/);
+  await assert.rejects(missingUser.run('echo hi'), /`user`/);
 
-  const missingKey = new SubmoduleEc2Instance(
+  const missingKey = new SubmoduleEc2SshTerminal(
     createClient(async () => createDescribeResponse()),
     {
-      id: 'i-123',
-      ssh: {
-        user: 'ubuntu',
-      },
+      instanceId: 'i-123',
+      user: 'ubuntu',
+      privateKey: '',
     },
     runtimeDependencies,
   );
-  await assert.rejects(missingKey.run('echo hi'), /privateKeyPem|privateKeyPath/);
+  await assert.rejects(missingKey.run('echo hi'), /`privateKey`/);
 });
 
-test('SubmoduleEc2Instance.run rejects instances that are not running or have no host', async () => {
+test('SubmoduleEc2SshTerminal.run rejects instances that are not running or have no host', async () => {
   const runtimeDependencies = createRuntimeDependencies();
 
-  const stopped = new SubmoduleEc2Instance(
+  const stopped = new SubmoduleEc2SshTerminal(
     createClient(async () => createDescribeResponse({ state: 'stopped' })),
     {
-      id: 'i-123',
-      ssh: {
-        user: 'ubuntu',
-        privateKeyPem: '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----',
-      },
+      instanceId: 'i-123',
+      user: 'ubuntu',
+      privateKey: '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----',
     },
     runtimeDependencies,
   );
   await assert.rejects(stopped.run('echo hi'), /running/);
 
-  const missingHost = new SubmoduleEc2Instance(
+  const missingHost = new SubmoduleEc2SshTerminal(
     createClient(async () =>
       createDescribeResponse({
         publicIpAddress: '',
@@ -184,18 +179,16 @@ test('SubmoduleEc2Instance.run rejects instances that are not running or have no
       }),
     ),
     {
-      id: 'i-123',
-      ssh: {
-        user: 'ubuntu',
-        privateKeyPem: '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----',
-      },
+      instanceId: 'i-123',
+      user: 'ubuntu',
+      privateKey: '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----',
     },
     runtimeDependencies,
   );
   await assert.rejects(missingHost.run('echo hi'), /Could not resolve an SSH host/);
 });
 
-test('SubmoduleEc2Instance.run resolves public host by default and private host when requested', async () => {
+test('SubmoduleEc2SshTerminal.run resolves public host by default and private host when requested', async () => {
   const sshCalls: Array<{ command: string; args: string[] }> = [];
   const runtimeDependencies = createRuntimeDependencies({
     runProcess: async (command: string, args: string[]) => {
@@ -208,29 +201,25 @@ test('SubmoduleEc2Instance.run resolves public host by default and private host 
     },
   });
 
-  const publicFirst = new SubmoduleEc2Instance(
+  const publicFirst = new SubmoduleEc2SshTerminal(
     createClient(async () => createDescribeResponse({ publicDnsName: 'ec2.example.com' })),
     {
-      id: 'i-123',
-      ssh: {
-        user: 'ubuntu',
-        privateKeyPem: '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----',
-      },
+      instanceId: 'i-123',
+      user: 'ubuntu',
+      privateKey: '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----',
     },
     runtimeDependencies,
   );
 
   await publicFirst.run('echo hi', { sessionName: 'public-session' });
 
-  const privateFirst = new SubmoduleEc2Instance(
+  const privateFirst = new SubmoduleEc2SshTerminal(
     createClient(async () => createDescribeResponse({ publicDnsName: 'ec2.example.com' })),
     {
-      id: 'i-123',
-      ssh: {
-        user: 'ubuntu',
-        preferPrivateIp: true,
-        privateKeyPem: '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----',
-      },
+      instanceId: 'i-123',
+      user: 'ubuntu',
+      preferPrivateIp: true,
+      privateKey: '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----',
     },
     runtimeDependencies,
   );
@@ -242,7 +231,7 @@ test('SubmoduleEc2Instance.run resolves public host by default and private host 
   assert.equal(sshCalls[1]?.args[sshCalls[1].args.length - 2], 'ubuntu@10.0.0.10');
 });
 
-test('SubmoduleEc2Instance.run honors explicit ssh.host and builds the detached screen command', async () => {
+test('SubmoduleEc2SshTerminal.run honors explicit host and builds the detached screen command', async () => {
   const sshCalls: Array<{ command: string; args: string[] }> = [];
   const tempPemInputs: string[] = [];
   let cleanupCount = 0;
@@ -267,7 +256,7 @@ test('SubmoduleEc2Instance.run honors explicit ssh.host and builds the detached 
     },
   });
 
-  const instance = new SubmoduleEc2Instance(
+  const terminal = new SubmoduleEc2SshTerminal(
     createClient(async (command) => {
       if (command instanceof DescribeInstancesCommand) {
         return createDescribeResponse({
@@ -278,18 +267,16 @@ test('SubmoduleEc2Instance.run honors explicit ssh.host and builds the detached 
       return {};
     }),
     {
-      id: 'i-123',
-      ssh: {
-        user: 'ubuntu',
-        host: 'manual-host.example.com',
-        port: 2222,
-        privateKeyPem: '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----',
-      },
+      instanceId: 'i-123',
+      user: 'ubuntu',
+      host: 'manual-host.example.com',
+      port: 2222,
+      privateKey: '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----',
     },
     runtimeDependencies,
   );
 
-  const remote = await instance.run('npm run worker', {
+  const remote = await terminal.run('npm run worker', {
     sessionName: 'my-screen',
     workingDirectory: '/srv/app',
     env: {
@@ -330,6 +317,42 @@ test('SubmoduleEc2Instance.run honors explicit ssh.host and builds the detached 
     '-----BEGIN OPENSSH PRIVATE KEY-----\nabc\n-----END OPENSSH PRIVATE KEY-----',
   ]);
   assert.equal(cleanupCount, 1);
+});
+
+test('SubmoduleEc2SshTerminal.run accepts privateKey file paths without creating a temporary key', async () => {
+  const sshCalls: Array<{ command: string; args: string[] }> = [];
+  let createTemporaryKeyFileCount = 0;
+
+  const terminal = new SubmoduleEc2SshTerminal(
+    createClient(async () => createDescribeResponse({ publicDnsName: 'ec2.example.com' })),
+    {
+      instanceId: 'i-123',
+      user: 'ubuntu',
+      privateKey: '/Users/me/.ssh/my-worker.pem',
+    },
+    createRuntimeDependencies({
+      createTemporaryKeyFile: async () => {
+        createTemporaryKeyFileCount += 1;
+        return {
+          path: '/tmp/generated-key.pem',
+          cleanup: async () => {},
+        };
+      },
+      runProcess: async (command: string, args: string[]) => {
+        sshCalls.push({ command, args });
+        return {
+          exitCode: 0,
+          stdout: '',
+          stderr: '',
+        };
+      },
+    }),
+  );
+
+  await terminal.run('echo hi', { sessionName: 'path-key-session' });
+
+  assert.equal(createTemporaryKeyFileCount, 0);
+  assert.equal(sshCalls[0]?.args[6], '/Users/me/.ssh/my-worker.pem');
 });
 
 test('SubmoduleEc2RemoteCommand status, output, stop, and wait use ssh-backed polling', async () => {
