@@ -291,7 +291,7 @@ function buildStatusScript(sessionName: string): string {
     'else',
     "  printf 'missing'",
     'fi',
-  ].join('; ');
+  ].join('\n');
 
   return `bash -lc ${shellEscape(script)}`;
 }
@@ -305,7 +305,7 @@ function buildReadOutputScript(sessionName: string, tailLines?: number): string 
     'if [ -f "$OUTPUT_FILE" ]; then',
     `  ${readCommand} "$OUTPUT_FILE"`,
     'fi',
-  ].join('; ');
+  ].join('\n');
 
   return `bash -lc ${shellEscape(script)}`;
 }
@@ -315,7 +315,7 @@ function buildStopScript(sessionName: string): string {
     'if command -v screen >/dev/null 2>&1; then',
     `  screen -S ${shellEscape(sessionName)} -X quit || true`,
     'fi',
-  ].join('; ');
+  ].join('\n');
 
   return `bash -lc ${shellEscape(script)}`;
 }
