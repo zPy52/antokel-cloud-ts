@@ -104,6 +104,33 @@ test('SubmoduleEc2Instance.create returns a new id and updates instance.id', asy
   assert.ok(sent[0] instanceof RunInstancesCommand);
 });
 
+test('SubmoduleEc2Instance.create sets the EC2 Name tag when name is provided', async () => {
+  const sent: RunInstancesCommand[] = [];
+  const instance = new SubmoduleEc2Instance(
+    createClient(async (command) => {
+      sent.push(command as RunInstancesCommand);
+      return {
+        Instances: [{ InstanceId: 'i-created' }],
+      };
+    }),
+    {
+      machine: 't4g.micro',
+      keyPair: 'my-key',
+      name: 'web-server-1',
+    },
+  );
+
+  await instance.create();
+
+  assert.equal(sent.length, 1);
+  assert.deepEqual(sent[0].input.TagSpecifications, [
+    {
+      ResourceType: 'instance',
+      Tags: [{ Key: 'Name', Value: 'web-server-1' }],
+    },
+  ]);
+});
+
 test('SubmoduleEc2Instance.create throws when AWS does not return an instance id', async () => {
   const instance = new SubmoduleEc2Instance(
     createClient(async () => ({

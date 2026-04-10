@@ -528,6 +528,14 @@ export class SubmoduleEc2Instance {
       MinCount: 1,
       MaxCount: 1,
       SecurityGroupIds: this.config.securityGroups,
+      TagSpecifications: this.config.name
+        ? [
+            {
+              ResourceType: 'instance',
+              Tags: [{ Key: 'Name', Value: this.config.name }],
+            },
+          ]
+        : undefined,
       UserData: this.config.userData
         ? Buffer.from(this.config.userData).toString('base64')
         : undefined,
