@@ -107,7 +107,13 @@ export class AntokelAws {
 
 export * from './aws/dynamodb';
 export { S3Wrapper, SubmoduleS3AsText, SubmoduleS3Presigned } from './aws/s3';
-export { Ec2Wrapper, SubmoduleEc2Instance } from './aws/ec2';
-export type { Ec2InstanceConfig } from './aws/ec2';
+export { Ec2Wrapper, SubmoduleEc2Instance, SubmoduleEc2RemoteCommand } from './aws/ec2';
+export type {
+  Ec2InstanceConfig,
+  Ec2InstanceSshConfig,
+  Ec2RemoteCommandResult,
+  Ec2RemoteCommandStatus,
+  Ec2RunCommandOptions,
+} from './aws/ec2';
 export * from './aws/rekognition';
 export * from './aws/transcribe';

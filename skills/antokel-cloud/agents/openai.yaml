@@ -1,4 +1,4 @@
 interface:
   display_name: "Antokel Cloud"
-  short_description: "SDK guidance for S3, DynamoDB, Rekognition, and EC2"
+  short_description: "SDK guidance for S3, DynamoDB, Rekognition, Transcribe, and EC2 including SSH sessions"
   default_prompt: "Use $antokel-cloud to help me write correct code with the antokel-cloud SDK."

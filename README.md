@@ -15,6 +15,7 @@ pnpm add antokel-cloud
 - Node.js ≥ 18
 - AWS credentials configured (env vars, `~/.aws/credentials`, or IAM role) for `AntokelAws`
 - OVH Object Storage credentials for `AntokelOVH`
+- Local `ssh` installed if you want to run EC2 remote commands
 
 ---
 
@@ -314,13 +315,56 @@ const instance = ec2.Instance({
   securityGroups: ["sg-01234"],
   ami:            "ami-0c55b159cbfafe1f0",
   userData:       "#!/bin/bash\necho hello",
+  ssh: {
+    user:           "ubuntu",
+    privateKeyPath: "/Users/me/.ssh/my-worker.pem",
+    // or: privateKeyPem: process.env.MY_WORKER_PRIVATE_KEY_PEM,
+    // optional:
+    // host: "ec2-1-2-3-4.compute.amazonaws.com",
+    // port: 22,
+    // preferPrivateIp: true,
+  },
 });
 
-await instance.create();
+const instanceId = await instance.create();
+console.log(instanceId);
+console.log(instance.id); // same value after create()
+
 await instance.start();
+
+const remote = await instance.run("npm run worker", {
+  sessionName: "my-screen",
+  workingDirectory: "/srv/app",
+  env: {
+    NODE_ENV: "production",
+  },
+});
+
+console.log(remote.sessionName); // "my-screen"
+console.log(await remote.status()); // { state: "running" } or { state: "finished", exitCode: ... }
+console.log(await remote.readOutput());
+
+const finished = await remote.wait({ timeoutMs: 60_000 });
+console.log(finished.exitCode, finished.output);
+
+await remote.stop(); // sends: screen -S my-screen -X quit
+
 await instance.stop();
 await instance.terminate();
 ```
+
+### EC2 notes
+
+- `create()` returns the resolved EC2 instance ID and also updates `instance.id`
+- If `instance.id` already exists, `create()` returns it without creating a second instance
+- Remote command execution is Linux-only in v1 and requires the instance to already be in the `running` state
+- Remote command execution requires `ssh.user` plus either `ssh.privateKeyPath` or `ssh.privateKeyPem`
+- `.ppk` keys are not supported in v1; use PEM/OpenSSH private keys
+- `keyPair` is still used for EC2 creation, but SSH authentication uses only the provided private key
+- If `ssh.host` is omitted, the SDK resolves the host from EC2 metadata using public DNS/IP first, then private IP. Set `preferPrivateIp: true` to flip that order
+- Remote commands run inside detached `screen` sessions and write combined output to `~/.antokel-cloud/ec2/<sessionName>/output.log`
+- The remote instance must already have `bash` and `screen` installed
+- The returned handle is intentionally non-interactive. To manually reattach, use your own SSH command and run `screen -r <sessionName>` on the instance
 
 ---
 

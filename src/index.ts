@@ -30,3 +30,11 @@ export type {
   TranscribeToken,
   TranscribeWord,
 } from './aws/transcribe';
+export { Ec2Wrapper, SubmoduleEc2Instance, SubmoduleEc2RemoteCommand } from './aws/ec2';
+export type {
+  Ec2InstanceConfig,
+  Ec2InstanceSshConfig,
+  Ec2RemoteCommandResult,
+  Ec2RemoteCommandStatus,
+  Ec2RunCommandOptions,
+} from './aws/ec2';

@@ -1,6 +1,6 @@
 ---
 name: antokel-cloud
-description: Comprehensive guidance for using the antokel-cloud TypeScript SDK to work with S3, DynamoDB, Rekognition, Transcribe, and EC2. Use when Codex needs to write, review, explain, document, or troubleshoot code that imports `antokel-cloud`, especially for `AntokelAws`, S3 file operations, presigned URLs, zod-backed DynamoDB tables, Rekognition analysis, Transcribe jobs, or EC2 instance management.
+description: Comprehensive guidance for using the antokel-cloud TypeScript SDK to work with S3, DynamoDB, Rekognition, Transcribe, and EC2. Use when Codex needs to write, review, explain, document, or troubleshoot code that imports `antokel-cloud`, especially for `AntokelAws`, S3 file operations, presigned URLs, zod-backed DynamoDB tables, Rekognition analysis, Transcribe jobs, or EC2 instance management including SSH command execution.
 ---
 
 # Antokel Cloud
@@ -17,7 +17,7 @@ Use this skill when a task depends on the `antokel-cloud` SDK. Treat `README.md`
    - [dynamodb.md](./references/dynamodb.md) for schema-bound tables, CRUD, queries, scans, and `field(...)`
    - [rekognition.md](./references/rekognition.md) for image analysis inputs and operations
    - [transcribe.md](./references/transcribe.md) for batch audio transcription, `transcribe.as.*` payload selectors, and timestamped output
-   - [ec2.md](./references/ec2.md) for instance lookup and lifecycle management
+   - [ec2.md](./references/ec2.md) for instance lookup, lifecycle management, SSH command execution, and `screen`-backed sessions
 3. Prefer README-backed examples and return-shape expectations when generating code.
 4. Preserve documented caveats exactly. In particular, keep the S3 presigned browser-upload flow on `PUT` and do not invent a `POST` JSON upload flow.
 5. If README wording leaves a naming detail ambiguous, inspect source just enough to confirm the exported symbol or method signature. Do not infer undocumented capabilities from implementation details.
@@ -37,4 +37,4 @@ Use this skill when a task depends on the `antokel-cloud` SDK. Treat `README.md`
 - Read [dynamodb.md](./references/dynamodb.md) when the task involves typed models, zod schemas, CRUD, queries, scans, or filter expressions.
 - Read [rekognition.md](./references/rekognition.md) when the task involves image sources, label detection, face analysis, OCR, PPE, or face comparison.
 - Read [transcribe.md](./references/transcribe.md) when the task involves audio transcription, staged uploads, batch jobs, or word-level timestamps.
-- Read [ec2.md](./references/ec2.md) when the task involves instance lookup, creation parameters, or start/stop/terminate flows.
+- Read [ec2.md](./references/ec2.md) when the task involves instance lookup, creation parameters, start/stop/terminate flows, SSH configuration, or remote command execution.

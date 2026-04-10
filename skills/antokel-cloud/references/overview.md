@@ -46,4 +46,4 @@ Use the resulting instance to create service wrappers:
 - If the user needs typed DynamoDB tables, zod schemas, CRUD, query filters, or scans, read [dynamodb.md](./dynamodb.md).
 - If the user needs image analysis or face comparison, read [rekognition.md](./rekognition.md).
 - If the user needs audio transcription, payload staging, or token/word timestamps, read [transcribe.md](./transcribe.md).
-- If the user needs instance lookup or instance lifecycle actions, read [ec2.md](./ec2.md).
+- If the user needs instance lookup, instance lifecycle actions, SSH command execution, or `screen`-backed remote sessions, read [ec2.md](./ec2.md).
