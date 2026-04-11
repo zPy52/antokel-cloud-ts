@@ -108,6 +108,7 @@ const DEFAULT_RUNTIME_DEPENDENCIES: Ec2RuntimeDependencies = {
   async runProcess(command: string, args: string[]) {
     const child = spawn(command, args, {
       stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, LANG: 'en_US.UTF-8', LC_ALL: 'en_US.UTF-8' },
     });
 
     let stdout = '';
@@ -249,7 +250,7 @@ function buildRemoteCommandScript(
   const logFile = `${sessionDir}/output.log`;
   const exitFile = `${sessionDir}/exit.code`;
   const shell = options?.shell || '/bin/bash';
-  const commandSteps: string[] = [];
+  const commandSteps: string[] = ['export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8'];
 
   if (options?.workingDirectory) {
     commandSteps.push(`cd ${shellEscape(options.workingDirectory)}`);

@@ -487,3 +487,81 @@ test('SubmoduleEc2RemoteCommand.wait rejects when the remote session disappears'
 
   await assert.rejects(remote.wait({ pollIntervalMs: 1, timeoutMs: 5 }), /missing/);
 });
+
+test('SubmoduleEc2SshTerminal.run injects LANG and LC_ALL into the remote script for UTF-8 support', async () => {
+  const sshCalls: Array<{ command: string; args: string[] }> = [];
+
+  const terminal = new SubmoduleEc2SshTerminal(
+    createClient(async (command) => {
+      if (command instanceof DescribeInstancesCommand) {
+        return createDescribeResponse({ publicDnsName: 'ec2.example.com' });
+      }
+      return {};
+    }),
+    {
+      instanceId: 'i-123',
+      user: 'ubuntu',
+      privateKey: '/tmp/key.pem',
+    },
+    createRuntimeDependencies({
+      runProcess: async (command: string, args: string[]) => {
+        sshCalls.push({ command, args });
+        return { exitCode: 0, stdout: '', stderr: '' };
+      },
+    }),
+  );
+
+  await terminal.run('echo hello', { sessionName: 'utf8-session' });
+
+  const remoteScript = sshCalls[0].args[sshCalls[0].args.length - 1];
+  assert.match(remoteScript, /LANG=en_US\.UTF-8/);
+  assert.match(remoteScript, /LC_ALL=en_US\.UTF-8/);
+});
+
+test('SubmoduleEc2RemoteCommand.readOutput preserves emoji and unicode characters', async () => {
+  const emojiOutput = 'Hello 🌍\nTarget 🎯\nDone ✅\n';
+
+  const remote = new SubmoduleEc2RemoteCommand(
+    {
+      host: 'ec2.example.com',
+      instanceId: 'i-emoji',
+      user: 'ubuntu',
+      privateKeyPath: '/tmp/key.pem',
+    } as any,
+    'emoji-session',
+    createRuntimeDependencies({
+      runProcess: async () => ({
+        exitCode: 0,
+        stdout: emojiOutput,
+        stderr: '',
+      }),
+    }),
+  );
+
+  const output = await remote.readOutput();
+  assert.equal(output, emojiOutput);
+});
+
+test('SubmoduleEc2RemoteCommand.readOutput preserves QR and box-drawing unicode characters', async () => {
+  const qrOutput = '█▀▀▀█ ▄ █▀▀▀█\n█   █ ▀ █   █\n█▀▀▀█   █▀▀▀█\n▄▄▄▄▄ ▄ ▄▄▄▄▄\n';
+
+  const remote = new SubmoduleEc2RemoteCommand(
+    {
+      host: 'ec2.example.com',
+      instanceId: 'i-qr',
+      user: 'ubuntu',
+      privateKeyPath: '/tmp/key.pem',
+    } as any,
+    'qr-session',
+    createRuntimeDependencies({
+      runProcess: async () => ({
+        exitCode: 0,
+        stdout: qrOutput,
+        stderr: '',
+      }),
+    }),
+  );
+
+  const output = await remote.readOutput();
+  assert.equal(output, qrOutput);
+});
