@@ -6,6 +6,7 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
   PutObjectCommand,
+  S3Client,
 } from '@aws-sdk/client-s3';
 
 import { S3Wrapper } from '../src/aws/s3';
@@ -203,12 +204,7 @@ test('SubmoduleS3Presigned normalizes keys before signing', async () => {
     contentType?: string;
   }) => {
     calls.push(input);
-    return {
-      protocol: 'https:',
-      hostname: 'example.com',
-      path: '/signed',
-      query: {},
-    };
+    return 'https://example.com/signed';
   };
 
   const upload = await presigned.upload('/asset.webp', {
@@ -235,30 +231,21 @@ test('SubmoduleS3Presigned normalizes keys before signing', async () => {
 });
 
 test('SubmoduleS3Presigned defaults to a 15 minute expiration when none is provided', async () => {
-  const presigned = new SubmoduleS3Presigned(createClient(), 'bucket', 'folder/') as any;
-  let capturedExpiresIn: number | undefined;
+  const presigned = new SubmoduleS3Presigned(
+    new S3Client({
+      region: 'us-east-1',
+      credentials: {
+        accessKeyId: 'key',
+        secretAccessKey: 'secret',
+      },
+    }),
+    'bucket',
+    'folder/',
+  );
 
-  presigned.s3Client.config.credentials = async () => ({
-    accessKeyId: 'key',
-    secretAccessKey: 'secret',
-  });
-  presigned.resolveRegion = async () => 'us-east-1';
-  presigned.resolveEndpoint = async () => new URL('https://example.com/base/');
-  presigned.createSigner = () => ({
-    presign: async (_request: unknown, options: { expiresIn: number }) => {
-      capturedExpiresIn = options.expiresIn;
-      return {
-        protocol: 'https:',
-        hostname: 'example.com',
-        path: '/signed',
-        query: {},
-      };
-    },
-  });
+  const url = new URL(await presigned.download('asset.webp'));
 
-  await presigned.download('asset.webp');
-
-  assert.equal(capturedExpiresIn, 900);
+  assert.equal(url.searchParams.get('X-Amz-Expires'), '900');
 });
 
 test('SubmoduleS3Presigned validates expiration bounds before signing', async () => {
@@ -274,66 +261,35 @@ test('SubmoduleS3Presigned validates expiration bounds before signing', async ()
   );
 });
 
-test('SubmoduleS3Presigned signs requests with the host header', async () => {
+test('SubmoduleS3Presigned uses the AWS SDK presigner for GET and PUT URLs', async () => {
   const presigned = new SubmoduleS3Presigned(
-    createClient(),
+    new S3Client({
+      region: 'us-east-1',
+      endpoint: 'https://example.com:8443/base/',
+      forcePathStyle: true,
+      credentials: {
+        accessKeyId: 'key',
+        secretAccessKey: 'secret',
+      },
+    }),
     'bucket',
     'folder/',
-  ) as any;
-  const captured: Array<{ headers: Record<string, string | undefined>; hostname: string; port?: number }> =
-    [];
-
-  presigned.s3Client.config.credentials = async () => ({
-    accessKeyId: 'key',
-    secretAccessKey: 'secret',
-  });
-  presigned.resolveRegion = async () => 'us-east-1';
-  presigned.resolveEndpoint = async () => new URL('https://example.com:8443/base/');
-  presigned.createSigner = () => ({
-    presign: async (request: {
-      protocol: string;
-      hostname: string;
-      port?: number;
-      path: string;
-      headers: Record<string, string | undefined>;
-    }) => {
-      captured.push({
-        headers: request.headers,
-        hostname: request.hostname,
-        port: request.port,
-      });
-      return {
-        protocol: request.protocol,
-        hostname: request.hostname,
-        port: request.port,
-        path: request.path,
-        query: {
-          'X-Amz-SignedHeaders': request.headers.host ? 'host' : '',
-        },
-      };
-    },
-  });
+  );
 
   const download = await presigned.download('asset.webp');
   const upload = await presigned.upload('asset.webp', {
     contentType: 'image/webp',
   });
 
-  assert.equal(download, 'https://example.com:8443/base/folder/asset.webp?X-Amz-SignedHeaders=host');
-  assert.equal(upload.url, 'https://example.com:8443/base/folder/asset.webp?X-Amz-SignedHeaders=host');
-  assert.deepEqual(captured, [
-    {
-      headers: { host: 'example.com:8443' },
-      hostname: 'example.com',
-      port: 8443,
-    },
-    {
-      headers: {
-        host: 'example.com:8443',
-        'content-type': 'image/webp',
-      },
-      hostname: 'example.com',
-      port: 8443,
-    },
-  ]);
+  const downloadUrl = new URL(download);
+  const uploadUrl = new URL(upload.url);
+
+  assert.equal(downloadUrl.origin, 'https://example.com:8443');
+  assert.equal(downloadUrl.pathname, '/base/bucket/folder/asset.webp');
+  assert.equal(uploadUrl.origin, 'https://example.com:8443');
+  assert.equal(uploadUrl.pathname, '/base/bucket/folder/asset.webp');
+  assert.equal(downloadUrl.searchParams.get('X-Amz-Algorithm'), 'AWS4-HMAC-SHA256');
+  assert.equal(uploadUrl.searchParams.get('X-Amz-Algorithm'), 'AWS4-HMAC-SHA256');
+  assert.ok(downloadUrl.searchParams.has('X-Amz-Signature'));
+  assert.ok(uploadUrl.searchParams.has('X-Amz-Signature'));
 });

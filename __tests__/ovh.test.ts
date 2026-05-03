@@ -194,62 +194,22 @@ test('SubmoduleOvhObjectStoragePresigned uses path-style OVH io endpoint URLs', 
     }),
     'bucket',
     'folder/',
-  ) as any;
-
-  const captured: Array<{ headers: Record<string, string | undefined>; hostname: string; port?: number }> =
-    [];
-
-  presigned.createSigner = () => ({
-    presign: async (request: {
-      protocol: string;
-      hostname: string;
-      port?: number;
-      path: string;
-      headers: Record<string, string | undefined>;
-    }) => {
-      captured.push({
-        headers: request.headers,
-        hostname: request.hostname,
-        port: request.port,
-      });
-      return {
-        protocol: request.protocol,
-        hostname: request.hostname,
-        port: request.port,
-        path: request.path,
-        query: {
-          'X-Amz-SignedHeaders': request.headers.host ? 'host' : '',
-        },
-      };
-    },
-  });
+  );
 
   const download = await presigned.download('asset.webp');
   const upload = await presigned.upload('asset.webp', {
     contentType: 'image/webp',
   });
 
-  assert.equal(
-    download,
-    'https://s3.gra.io.cloud.ovh.net/bucket/folder/asset.webp?X-Amz-SignedHeaders=host',
-  );
-  assert.equal(
-    upload.url,
-    'https://s3.gra.io.cloud.ovh.net/bucket/folder/asset.webp?X-Amz-SignedHeaders=host',
-  );
-  assert.deepEqual(captured, [
-    {
-      headers: { host: 's3.gra.io.cloud.ovh.net' },
-      hostname: 's3.gra.io.cloud.ovh.net',
-      port: undefined,
-    },
-    {
-      headers: {
-        host: 's3.gra.io.cloud.ovh.net',
-        'content-type': 'image/webp',
-      },
-      hostname: 's3.gra.io.cloud.ovh.net',
-      port: undefined,
-    },
-  ]);
+  const downloadUrl = new URL(download);
+  const uploadUrl = new URL(upload.url);
+
+  assert.equal(downloadUrl.origin, 'https://s3.gra.io.cloud.ovh.net');
+  assert.equal(downloadUrl.pathname, '/bucket/folder/asset.webp');
+  assert.equal(uploadUrl.origin, 'https://s3.gra.io.cloud.ovh.net');
+  assert.equal(uploadUrl.pathname, '/bucket/folder/asset.webp');
+  assert.equal(downloadUrl.searchParams.get('X-Amz-Algorithm'), 'AWS4-HMAC-SHA256');
+  assert.equal(uploadUrl.searchParams.get('X-Amz-Algorithm'), 'AWS4-HMAC-SHA256');
+  assert.ok(downloadUrl.searchParams.has('X-Amz-Signature'));
+  assert.ok(uploadUrl.searchParams.has('X-Amz-Signature'));
 });
